@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>JornadaPet — API Tester</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --bg:#0d1117;--surf:#161b22;--surf2:#1c2330;--surf3:#21262d;
+            --bd:#30363d;--bd2:#21262d;
+            --tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;
+            --green:#3fb950;--green2:#238636;--green-dim:rgba(63,185,80,.12);
+            --red:#f85149;--red-dim:rgba(248,81,73,.12);
+            --blue:#58a6ff;--blue-dim:rgba(88,166,255,.12);
+            --yellow:#d29922;--yellow-dim:rgba(210,153,34,.12);
+            --purple:#bc8cff;--purple-dim:rgba(188,140,255,.12);
+            --r:8px;--r2:12px;
+            --font:'Sora',sans-serif;--mono:'DM Mono',monospace;
+        }
+        body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh}
+        #app{display:flex;height:100vh;overflow:hidden}
+
+        /* SIDEBAR */
+        #sidebar{width:230px;background:var(--surf);border-right:1px solid var(--bd2);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+        .sb-logo{padding:20px 16px 14px;border-bottom:1px solid var(--bd2)}
+        .sb-logo h1{font-size:16px;font-weight:600;color:var(--green);letter-spacing:-.3px}
+        .sb-logo p{font-size:11px;color:var(--tx3);margin-top:2px;font-family:var(--mono)}
+        .sb-base{padding:12px 10px 6px}
+        .sb-base label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;padding:0 6px;display:block;margin-bottom:4px}
+        .sb-base input{width:100%;background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:7px 10px;color:var(--tx);font-family:var(--mono);font-size:12px;outline:none}
+        .sb-base input:focus{border-color:var(--green)}
+        .sb-section{padding:8px 10px 4px}
+        .sb-section span{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;padding:0 6px;display:block;margin-bottom:2px}
+        .sb-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:none;background:transparent;color:var(--tx2);font-family:var(--font);font-size:13px;border-radius:var(--r);cursor:pointer;text-align:left;transition:all .15s}
+        .sb-btn:hover{background:var(--surf3);color:var(--tx)}
+        .sb-btn .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;opacity:.7}
+        .sb-btn.method-get .dot{background:var(--blue)}
+        .sb-btn.method-post .dot{background:var(--green)}
+        .sb-btn.method-put .dot{background:var(--yellow)}
+        .sb-btn.method-patch .dot{background:var(--purple)}
+        .sb-btn.method-delete .dot{background:var(--red)}
+        .sb-btn.active.method-get{background:var(--blue-dim);color:var(--blue)}
+        .sb-btn.active.method-post{background:var(--green-dim);color:var(--green)}
+        .sb-btn.active.method-put{background:var(--yellow-dim);color:var(--yellow)}
+        .sb-btn.active.method-patch{background:var(--purple-dim);color:var(--purple)}
+        .sb-btn.active.method-delete{background:var(--red-dim);color:var(--red)}
+        .sb-divider{height:1px;background:var(--bd2);margin:6px 10px}
+        .sb-token{padding:10px 16px 16px;border-top:1px solid var(--bd2);margin-top:auto}
+        .sb-token label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px}
+        .token-box{background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--green);word-break:break-all;max-height:52px;overflow:hidden;cursor:pointer}
+        .token-box.empty{color:var(--tx3);font-style:italic}
+        .token-clear{margin-top:6px;font-size:11px;color:var(--red);cursor:pointer;background:none;border:none;padding:0;font-family:var(--font)}
+        .token-clear:hover{text-decoration:underline}
+
+        /* MAIN */
+        #main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+        #topbar{padding:14px 22px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:12px;background:var(--surf);flex-shrink:0;flex-wrap:wrap;gap:10px}
+        .method-badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;flex-shrink:0}
+        .badge-get{background:var(--blue-dim);color:var(--blue)}
+        .badge-post{background:var(--green-dim);color:var(--green)}
+        .badge-put{background:var(--yellow-dim);color:var(--yellow)}
+        .badge-patch{background:var(--purple-dim);color:var(--purple)}
+        .badge-delete{background:var(--red-dim);color:var(--red)}
+        .tb-info{flex:1;min-width:0}
+        .tb-info .ep-title{font-size:14px;font-weight:500;color:var(--tx)}
+        .tb-info .ep-desc{font-size:12px;color:var(--tx3);margin-top:2px}
+        #send-btn{padding:8px 18px;background:var(--green2);border:none;border-radius:var(--r);color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;flex-shrink:0}
+        #send-btn:hover{background:var(--green)}
+        #send-btn:disabled{opacity:.4;cursor:not-allowed}
+
+        #content{flex:1;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+        .panel{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+        .panel:first-child{border-right:1px solid var(--bd2)}
+        .panel-header{padding:10px 20px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:8px;flex-shrink:0}
+        .panel-header .ph-label{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px}
+        .status-chip{margin-left:auto;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px}
+        .status-ok{background:var(--green-dim);color:var(--green)}
+        .status-err{background:var(--red-dim);color:var(--red)}
+        .status-pending{background:var(--surf3);color:var(--tx3)}
+        .panel-body{flex:1;overflow-y:auto;padding:16px 20px}
+
+        /* FORM */
+        .field-group{margin-bottom:13px}
+        .field-group label{display:block;font-size:11px;color:var(--tx2);margin-bottom:5px;font-weight:500}
+        .req{color:var(--red);margin-left:2px}
+        .opt{color:var(--tx3);margin-left:4px;font-weight:400;font-size:10px}
+        .field-group input,.field-group select,.field-group textarea{width:100%;background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:8px 11px;color:var(--tx);font-family:var(--font);font-size:13px;outline:none;transition:border .15s}
+        .field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--green)}
+        .field-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+        .field-group select option{background:var(--surf2)}
+        .field-group textarea{resize:vertical;min-height:70px;font-family:var(--mono);font-size:12px;line-height:1.5}
+        .checkbox-row{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0}
+        .checkbox-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--green);cursor:pointer}
+        .checkbox-row span{font-size:13px;color:var(--tx)}
+        .section-title{font-size:10px;color:var(--tx3);font-weight:500;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)}
+        .section-gap{margin-top:18px}
+
+        /* RESPONSE */
+        #response-area{font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+        #response-area.empty{color:var(--tx3);font-style:italic;font-family:var(--font);font-size:13px;line-height:1.6}
+        .response-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd2)}
+        .response-meta span{font-size:11px;color:var(--tx3);font-family:var(--mono)}
+        .response-meta strong{color:var(--tx2)}
+        .j-key{color:#79c0ff}.j-str{color:#a5d6ff}.j-num{color:#f2cc60}.j-bool{color:#ff7b72}.j-null{color:#8b949e}
+
+        /* WELCOME */
+        #welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--tx3);padding:40px;text-align:center}
+        #welcome h2{font-size:18px;font-weight:500;color:var(--tx2)}
+        #welcome p{font-size:13px;max-width:340px;line-height:1.7}
+        .hint-list{list-style:none;font-size:12px;color:var(--tx3);line-height:2;margin-top:4px}
+        .hint-list li::before{content:'→ ';color:var(--green)}
+
+        /* MISC */
+        ::-webkit-scrollbar{width:5px;height:5px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
+        ::-webkit-scrollbar-thumb:hover{background:var(--bd)}
+        .tag{display:inline-flex;align-items:center;font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:4px;margin-left:4px}
+        .tag-auth{background:var(--yellow-dim);color:var(--yellow)}
+        .tag-page{background:var(--purple-dim);color:var(--purple)}
+        .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .copy-btn{background:var(--surf3);border:1px solid var(--bd);border-radius:6px;color:var(--tx2);font-size:11px;padding:3px 8px;cursor:pointer;font-family:var(--font)}
+        .copy-btn:hover{border-color:var(--green);color:var(--green)}
+        .no-params{color:var(--tx3);font-size:13px;line-height:1.6}
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <div class="sb-logo">
+            <h1>🐾 JornadaPet</h1>
+            <p>API Tester · FIAP 2026</p>
+        </div>
+
+        <div class="sb-base">
+            <label>Base URL</label>
+            <input id="base-url" value="http://localhost:8080" placeholder="http://localhost:8080"/>
+        </div>
+
+        <div class="sb-section"><span>Auth</span></div>
+        <button class="sb-btn method-post" data-ep="register" onclick="selectEndpoint(this,'register')"><span class="dot"></span>Register</button>
+        <button class="sb-btn method-post" data-ep="login" onclick="selectEndpoint(this,'login')"><span class="dot"></span>Login</button>
+
+        <div class="sb-divider"></div>
+        <div class="sb-section"><span>Tutores</span></div>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'tutores-list')"><span class="dot"></span>Listar Tutores</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'tutores-get')"><span class="dot"></span>Buscar por ID</button>
+        <button class="sb-btn method-post" onclick="selectEndpoint(this,'tutores-post')"><span class="dot"></span>Cadastrar Tutor</button>
+        <button class="sb-btn method-put" onclick="selectEndpoint(this,'tutores-put')"><span class="dot"></span>Atualizar Tutor</button>
+        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'tutores-delete')"><span class="dot"></span>Deletar Tutor</button>
+
+        <div class="sb-divider"></div>
+        <div class="sb-section"><span>Pets</span></div>
+        <button class="sb-btn method-post" onclick="selectEndpoint(this,'pets-post')"><span class="dot"></span>Cadastrar Pet</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-get')"><span class="dot"></span>Buscar por ID</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-by-tutor')"><span class="dot"></span>Pets do Tutor</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-by-especie')"><span class="dot"></span>Por Espécie</button>
+        <button class="sb-btn method-put" onclick="selectEndpoint(this,'pets-put')"><span class="dot"></span>Atualizar Pet</button>
+        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'pets-delete')"><span class="dot"></span>Deletar Pet</button>
+
+        <div class="sb-divider"></div>
+        <div class="sb-section"><span>Eventos de Saúde</span></div>
+        <button class="sb-btn method-post" onclick="selectEndpoint(this,'eventos-post')"><span class="dot"></span>Registrar Evento</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-list')"><span class="dot"></span>Listar Eventos</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-pendentes')"><span class="dot"></span>Pendentes</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-atrasados')"><span class="dot"></span>Atrasados</button>
+        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-get')"><span class="dot"></span>Buscar por ID</button>
+        <button class="sb-btn method-patch" onclick="selectEndpoint(this,'eventos-realizado')"><span class="dot"></span>Marcar Realizado</button>
+        <button class="sb-btn method-put" onclick="selectEndpoint(this,'eventos-put')"><span class="dot"></span>Atualizar Evento</button>
+        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'eventos-delete')"><span class="dot"></span>Deletar Evento</button>
+
+        <div class="sb-token">
+            <label>JWT Token</label>
+            <div class="token-box empty" id="token-display" title="Clique para copiar" onclick="copyToken()">Faça login para obter token</div>
+            <button class="token-clear" id="token-clear" style="display:none" onclick="clearToken()">✕ Limpar token</button>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div id="main">
+        <div id="welcome">
+            <div style="font-size:42px">🐾</div>
+            <h2>JornadaPet API Tester</h2>
+            <p>Selecione um endpoint no menu lateral para começar a testar.</p>
+            <ul class="hint-list">
+                <li>Faça <strong>Register</strong> ou <strong>Login</strong> primeiro</li>
+                <li>O JWT é salvo e enviado automaticamente</li>
+                <li><kbd style="background:var(--surf3);padding:2px 6px;border-radius:4px;font-size:11px">Ctrl+Enter</kbd> envia a requisição</li>
+            </ul>
+        </div>
+
+        <div id="request-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div id="topbar">
+                <span class="method-badge" id="tb-method">GET</span>
+                <div class="tb-info">
+                    <div class="ep-title" id="tb-title">Endpoint</div>
+                    <div class="ep-desc" id="tb-desc"></div>
+                </div>
+                <button id="send-btn" onclick="sendRequest()">▶ Enviar</button>
+            </div>
+
+            <div id="content">
+                <div class="panel">
+                    <div class="panel-header"><span class="ph-label">Parâmetros & Body</span></div>
+                    <div class="panel-body" id="params-panel"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="ph-label">Resposta</span>
+                        <span class="status-chip status-pending" id="status-chip">aguardando</span>
+                        <button class="copy-btn" style="margin-left:8px" onclick="copyResponse()">copiar</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="response-area" class="empty">A resposta aparecerá aqui após enviar.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let token = localStorage.getItem('jornada_jwt') || '';
+    let currentEpKey = null;
+    let lastResponseText = '';
+    let activeBtn = null;
+
+    if (token) updateTokenDisplay();
+
+    const EP = {
+        register:{method:'POST',path:'/auth/register',title:'Registrar Tutor',desc:'Cria conta e retorna JWT',auth:false,
+            fields:[
+                {id:'nome',label:'Nome',type:'text',req:true,ph:'Maria Silva'},
+                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
+                {id:'senha',label:'Senha',type:'password',req:true,ph:'••••••••'},
+                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990001'},
+                {id:'cpf',label:'CPF',type:'text',req:false,ph:'111.111.111-11'},
+            ],
+            body:v=>({nome:v.nome,email:v.email,senha:v.senha,telefone:v.telefone||null,cpf:v.cpf||null})
+        },
+        login:{method:'POST',path:'/auth/login',title:'Login',desc:'Autentica e retorna JWT token',auth:false,
+            fields:[
+                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
+                {id:'senha',label:'Senha',type:'password',req:true,ph:'••••••••'},
+            ],
+            body:v=>({email:v.email,senha:v.senha})
+        },
+        'tutores-list':{method:'GET',path:'/tutores',title:'Listar Tutores',desc:'Retorna todos os tutores cadastrados',auth:true,fields:[]},
+        'tutores-get':{method:'GET',path:'/tutores/{id}',title:'Buscar Tutor por ID',desc:'',auth:true,
+            fields:[{id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'}],
+            pp:['id']
+        },
+        'tutores-post':{method:'POST',path:'/tutores',title:'Cadastrar Tutor',desc:'Cria tutor sem senha',auth:true,
+            fields:[
+                {id:'nome',label:'Nome',type:'text',req:true,ph:'João Souza'},
+                {id:'email',label:'Email',type:'email',req:true,ph:'joao@email.com'},
+                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990002'},
+                {id:'cpf',label:'CPF',type:'text',req:false,ph:'222.222.222-22'},
+            ],
+            body:v=>({nome:v.nome,email:v.email,telefone:v.telefone||null,cpf:v.cpf||null})
+        },
+        'tutores-put':{method:'PUT',path:'/tutores/{id}',title:'Atualizar Tutor',desc:'',auth:true,
+            fields:[
+                {id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'},
+                {id:'nome',label:'Nome',type:'text',req:true,ph:'Maria Silva'},
+                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
+                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990001'},
+                {id:'cpf',label:'CPF',type:'text',req:false,ph:'111.111.111-11'},
+            ],
+            pp:['id'],
+            body:v=>({nome:v.nome,email:v.email,telefone:v.telefone||null,cpf:v.cpf||null})
+        },
+        'tutores-delete':{method:'DELETE',path:'/tutores/{id}',title:'Deletar Tutor',desc:'Retorna 204 No Content',auth:true,
+            fields:[{id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'}],
+            pp:['id']
+        },
+        'pets-post':{method:'POST',path:'/pets/tutor/{tutorId}',title:'Cadastrar Pet',desc:'Eventos iniciais sugeridos automaticamente pelo serviço',auth:true,
+            fields:[
+                {id:'tutorId',label:'ID do Tutor',type:'number',req:true,ph:'1'},
+                {id:'nome',label:'Nome do Pet',type:'text',req:true,ph:'Buddy'},
+                {id:'especie',label:'Espécie',type:'text',req:true,ph:'cão'},
+                {id:'raca',label:'Raça',type:'text',req:false,ph:'Golden Retriever'},
+                {id:'peso',label:'Peso (kg)',type:'number',req:false,ph:'5.0'},
+                {id:'dataNascimento',label:'Data de Nascimento',type:'date',req:true,ph:''},
+                {id:'sexo',label:'Sexo',type:'select',options:['M','F'],req:false},
+                {id:'castrado',label:'Castrado',type:'checkbox'},
+                {id:'observacoes',label:'Observações',type:'textarea',req:false,ph:'Filhote muito ativo'},
+            ],
+            pp:['tutorId'],
+            body:v=>({nome:v.nome,especie:v.especie,raca:v.raca||null,peso:v.peso?parseFloat(v.peso):null,dataNascimento:v.dataNascimento||null,sexo:v.sexo||null,castrado:!!v.castrado,observacoes:v.observacoes||null})
+        },
+        'pets-get':{method:'GET',path:'/pets/{id}',title:'Buscar Pet por ID',desc:'Retorna idade calculada automaticamente',auth:true,
+            fields:[{id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'}],
+            pp:['id']
+        },
+        'pets-by-tutor':{method:'GET',path:'/pets/tutor/{tutorId}',title:'Pets do Tutor',desc:'Paginável',auth:true,
+            fields:[
+                {id:'tutorId',label:'ID do Tutor',type:'number',req:true,ph:'1'},
+                {id:'page',label:'Página',type:'number',req:false,ph:'0'},
+                {id:'size',label:'Tamanho',type:'number',req:false,ph:'10'},
+                {id:'sort',label:'Ordenar por',type:'text',req:false,ph:'nome'},
+            ],
+            pp:['tutorId'],qp:['page','size','sort']
+        },
+        'pets-by-especie':{method:'GET',path:'/pets',title:'Pets por Espécie',desc:'Padrão: cão',auth:true,
+            fields:[{id:'especie',label:'Espécie',type:'text',req:false,ph:'gato'}],
+            qp:['especie']
+        },
+        'pets-put':{method:'PUT',path:'/pets/{id}',title:'Atualizar Pet',desc:'Atualiza nome, peso, raça, castrado e observações',auth:true,
+            fields:[
+                {id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'nome',label:'Nome',type:'text',req:true,ph:'Buddy'},
+                {id:'raca',label:'Raça',type:'text',req:false,ph:'Golden Retriever'},
+                {id:'peso',label:'Peso (kg)',type:'number',req:false,ph:'6.0'},
+                {id:'castrado',label:'Castrado',type:'checkbox'},
+                {id:'observacoes',label:'Observações',type:'textarea',req:false,ph:'Observações atualizadas'},
+            ],
+            pp:['id'],
+            body:v=>({nome:v.nome,raca:v.raca||null,peso:v.peso?parseFloat(v.peso):null,castrado:!!v.castrado,observacoes:v.observacoes||null})
+        },
+        'pets-delete':{method:'DELETE',path:'/pets/{id}',title:'Deletar Pet',desc:'Retorna 204 No Content',auth:true,
+            fields:[{id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'}],
+            pp:['id']
+        },
+        'eventos-post':{method:'POST',path:'/pets/{petId}/eventos',title:'Registrar Evento de Saúde',desc:'Tipos: VACINA, VERMIFUGO, BANHO, TOSA, CHECKUP, CONSULTA, CIRURGIA, MEDICAMENTO',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'tipo',label:'Tipo',type:'select',options:['VACINA','VERMIFUGO','BANHO','TOSA','CHECKUP','CONSULTA','CIRURGIA','MEDICAMENTO'],req:true},
+                {id:'descricao',label:'Descrição',type:'textarea',req:false,ph:'Vacina antirrábica anual'},
+                {id:'dataRealizacao',label:'Data Realização',type:'date',req:false},
+                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
+            ],
+            pp:['petId'],
+            body:v=>({tipo:v.tipo,descricao:v.descricao||null,dataRealizacao:v.dataRealizacao||null,dataProxima:v.dataProxima||null})
+        },
+        'eventos-list':{method:'GET',path:'/pets/{petId}/eventos',title:'Listar Eventos do Pet',desc:'Ordenação padrão: dataProxima',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'page',label:'Página',type:'number',req:false,ph:'0'},
+                {id:'size',label:'Tamanho',type:'number',req:false,ph:'10'},
+                {id:'sort',label:'Ordenar por',type:'text',req:false,ph:'dataProxima'},
+            ],
+            pp:['petId'],qp:['page','size','sort']
+        },
+        'eventos-pendentes':{method:'GET',path:'/pets/{petId}/eventos/pendentes',title:'Eventos Pendentes',desc:'Status atualizado para ATRASADO automaticamente se data passou',auth:true,
+            fields:[{id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'}],
+            pp:['petId']
+        },
+        'eventos-atrasados':{method:'GET',path:'/pets/{petId}/eventos/atrasados',title:'Eventos Atrasados',desc:'dataProxima no passado e não realizados',auth:true,
+            fields:[{id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'}],
+            pp:['petId']
+        },
+        'eventos-get':{method:'GET',path:'/pets/{petId}/eventos/{id}',title:'Buscar Evento por ID',desc:'',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
+            ],
+            pp:['petId','id']
+        },
+        'eventos-realizado':{method:'PATCH',path:'/pets/{petId}/eventos/{id}/realizado',title:'Marcar como Realizado',desc:'Define status=REALIZADO, dataRealizacao=hoje e agenda próxima data',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
+                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
+            ],
+            pp:['petId','id'],
+            body:v=>({dataProxima:v.dataProxima||null})
+        },
+        'eventos-put':{method:'PUT',path:'/pets/{petId}/eventos/{id}',title:'Atualizar Evento',desc:'',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
+                {id:'tipo',label:'Tipo',type:'select',options:['VACINA','VERMIFUGO','BANHO','TOSA','CHECKUP','CONSULTA','CIRURGIA','MEDICAMENTO'],req:true},
+                {id:'descricao',label:'Descrição',type:'textarea',req:false,ph:'Descrição atualizada'},
+                {id:'dataRealizacao',label:'Data Realização',type:'date',req:false},
+                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
+            ],
+            pp:['petId','id'],
+            body:v=>({tipo:v.tipo,descricao:v.descricao||null,dataRealizacao:v.dataRealizacao||null,dataProxima:v.dataProxima||null})
+        },
+        'eventos-delete':{method:'DELETE',path:'/pets/{petId}/eventos/{id}',title:'Deletar Evento',desc:'Retorna 204 No Content',auth:true,
+            fields:[
+                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
+                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
+            ],
+            pp:['petId','id']
+        },
+    };
+
+    function selectEndpoint(btn, key) {
+        currentEpKey = key;
+        const ep = EP[key];
+
+        if (activeBtn) activeBtn.classList.remove('active');
+        btn.classList.add('active');
+        activeBtn = btn;
+
+        document.getElementById('welcome').style.display = 'none';
+        const rv = document.getElementById('request-view');
+        rv.style.display = 'flex';
+
+        const mb = document.getElementById('tb-method');
+        mb.textContent = ep.method;
+        mb.className = 'method-badge badge-' + ep.method.toLowerCase();
+        document.getElementById('tb-title').textContent = ep.title;
+
+        let tags = '';
+        if (ep.auth) tags += '<span class="tag tag-auth">🔒 JWT</span>';
+        if (ep.qp) tags += '<span class="tag tag-page">paginável</span>';
+        document.getElementById('tb-desc').innerHTML = (ep.desc ? ep.desc + ' ' : '') + tags;
+
+        resetResponse();
+        renderParams(ep);
+    }
+
+    function resetResponse() {
+        document.getElementById('response-area').innerHTML = 'A resposta aparecerá aqui após enviar.';
+        document.getElementById('response-area').className = 'empty';
+        document.getElementById('status-chip').textContent = 'aguardando';
+        document.getElementById('status-chip').className = 'status-chip status-pending';
+        lastResponseText = '';
+    }
+
+    function renderParams(ep) {
+        const panel = document.getElementById('params-panel');
+        panel.innerHTML = '';
+
+        if (!ep.fields || ep.fields.length === 0) {
+            panel.innerHTML = '<p class="no-params">Nenhum parâmetro necessário para este endpoint.</p>';
+            return;
+        }
+
+        const ppIds = ep.pp || [];
+        const pathFields = ep.fields.filter(f => ppIds.includes(f.id));
+        const bodyFields = ep.fields.filter(f => !ppIds.includes(f.id));
+
+        if (pathFields.length > 0) {
+            addSectionTitle(panel, 'Path Parameters', false);
+            pathFields.forEach(f => addField(panel, f));
+        }
+
+        if (bodyFields.length > 0) {
+            const isQuery = (ep.qp || []).some(q => bodyFields.find(f => f.id === q));
+            const label = isQuery && !ep.body ? 'Query Parameters' : 'Request Body';
+            addSectionTitle(panel, label, pathFields.length > 0);
+            bodyFields.forEach(f => addField(panel, f));
+        }
+    }
+
+    function addSectionTitle(container, text, gap) {
+        const d = document.createElement('div');
+        d.className = 'section-title' + (gap ? ' section-gap' : '');
+        d.textContent = text;
+        container.appendChild(d);
+    }
+
+    function addField(container, f) {
+        const wrap = document.createElement('div');
+        wrap.className = 'field-group';
+
+        if (f.type === 'checkbox') {
+            wrap.innerHTML = `<label class="checkbox-row"><input type="checkbox" id="f-${f.id}"/><span>${f.label}</span></label>`;
+        } else if (f.type === 'select') {
+            const opts = (f.options || []).map(o => `<option value="${o}">${o}</option>`).join('');
+            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : ''}</label><select id="f-${f.id}">${opts}</select>`;
+        } else if (f.type === 'textarea') {
+            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : '<span class="opt">opcional</span>'}</label><textarea id="f-${f.id}" placeholder="${f.ph || ''}"></textarea>`;
+        } else {
+            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : '<span class="opt">opcional</span>'}</label><input type="${f.type}" id="f-${f.id}" placeholder="${f.ph || ''}"/>`;
+        }
+        container.appendChild(wrap);
+    }
+
+    function getVals(ep) {
+        const v = {};
+        (ep.fields || []).forEach(f => {
+            const el = document.getElementById('f-' + f.id);
+            if (!el) return;
+            v[f.id] = f.type === 'checkbox' ? el.checked : el.value.trim();
+        });
+        return v;
+    }
+
+    function buildUrl(ep, v) {
+        const base = document.getElementById('base-url').value.replace(/\/$/, '');
+        let path = ep.path;
+        (ep.pp || []).forEach(p => { path = path.replace('{' + p + '}', encodeURIComponent(v[p] || '')); });
+        const qp = (ep.qp || []).filter(p => v[p]).map(p => `${p}=${encodeURIComponent(v[p])}`).join('&');
+        return base + path + (qp ? '?' + qp : '');
+    }
+
+    async function sendRequest() {
+        if (!currentEpKey) return;
+        const ep = EP[currentEpKey];
+        const v = getVals(ep);
+
+        for (const f of (ep.fields || [])) {
+            if (f.req && f.type !== 'checkbox' && !v[f.id]) {
+                const el = document.getElementById('f-' + f.id);
+                if (el) { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 2000); }
+                showResp(`<span style="color:var(--red)">Campo obrigatório: ${f.label}</span>`);
+                return;
+            }
+        }
+
+        const url = buildUrl(ep, v);
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Enviando...';
+
+        const respEl = document.getElementById('response-area');
+        respEl.className = ''; respEl.innerHTML = '<span class="spinner"></span>Aguardando resposta...';
+
+        const headers = {'Content-Type': 'application/json'};
+        if (ep.auth && token) headers['Authorization'] = 'Bearer ' + token;
+
+        const opts = { method: ep.method, headers };
+        if (ep.body) opts.body = JSON.stringify(ep.body(v));
+
+        const t0 = Date.now();
+        try {
+            const res = await fetch(url, opts);
+            const ms = Date.now() - t0;
+            const chip = document.getElementById('status-chip');
+            chip.textContent = res.status + ' ' + res.statusText;
+            chip.className = 'status-chip ' + (res.ok ? 'status-ok' : 'status-err');
+
+            const text = await res.text();
+            let parsed = null;
+            try { parsed = JSON.parse(text); } catch(e) {}
+
+            if (res.ok && parsed && parsed.token && (currentEpKey === 'login' || currentEpKey === 'register')) {
+                token = parsed.token;
+                localStorage.setItem('jornada_jwt', token);
+                updateTokenDisplay();
+            }
+
+            lastResponseText = parsed ? JSON.stringify(parsed, null, 2) : (text || '(sem corpo — 204 No Content)');
+
+            const metaHtml = `<div class="response-meta">
+      <span><strong>${res.status}</strong> ${res.statusText}</span>
+      <span>${ms}ms</span>
+      <span style="font-size:10px;color:var(--tx3)">${url}</span>
+    </div>`;
+            respEl.className = '';
+            respEl.innerHTML = metaHtml + highlight(lastResponseText);
+        } catch(err) {
+            document.getElementById('status-chip').textContent = 'Erro';
+            document.getElementById('status-chip').className = 'status-chip status-err';
+            showResp(`<span style="color:var(--red)">✕ Falha na conexão\n\n${err.message}\n\nVerifique se a API está rodando em:\n${document.getElementById('base-url').value}</span>`);
+        }
+
+        btn.disabled = false; btn.innerHTML = '▶ Enviar';
+    }
+
+    function showResp(html) {
+        const el = document.getElementById('response-area');
+        el.className = ''; el.innerHTML = html;
+    }
+
+    function highlight(str) {
+        return str
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+                let c = 'j-num';
+                if (/^"/.test(m)) c = /:$/.test(m) ? 'j-key' : 'j-str';
+                else if (/true|false/.test(m)) c = 'j-bool';
+                else if (/null/.test(m)) c = 'j-null';
+                return `<span class="${c}">${m}</span>`;
+            });
+    }
+
+    function updateTokenDisplay() {
+        const el = document.getElementById('token-display');
+        const clr = document.getElementById('token-clear');
+        if (token) {
+            el.textContent = token.substring(0, 38) + '…';
+            el.className = 'token-box';
+            clr.style.display = 'block';
+        } else {
+            el.textContent = 'Faça login para obter token';
+            el.className = 'token-box empty';
+            clr.style.display = 'none';
+        }
+    }
+
+    function clearToken() { token = ''; localStorage.removeItem('jornada_jwt'); updateTokenDisplay(); }
+
+    function copyToken() {
+        if (!token) return;
+        navigator.clipboard.writeText(token);
+        const el = document.getElementById('token-display');
+        const orig = el.textContent;
+        el.textContent = '✓ Copiado!';
+        setTimeout(() => updateTokenDisplay(), 1500);
+    }
+
+    function copyResponse() {
+        if (!lastResponseText) return;
+        navigator.clipboard.writeText(lastResponseText);
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = '✓ copiado';
+        setTimeout(() => btn.textContent = 'copiar', 1500);
+    }
+
+    document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') sendRequest(); });
+</script>
+</body>
+</html>

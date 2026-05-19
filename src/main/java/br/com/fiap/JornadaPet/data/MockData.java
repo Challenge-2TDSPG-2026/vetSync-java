@@ -25,7 +25,7 @@ public class MockData {
     @PostConstruct
     public void init() {
 
-        // --- Tutores ---
+
         Tutor maria = tutorService.cadastrar(Tutor.builder()
                 .nome("Maria Silva")
                 .email("maria@email.com")

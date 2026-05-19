@@ -37,7 +37,7 @@ public class Pet {
     @NotNull(message = "Data de nascimento é obrigatória")
     private LocalDate dataNascimento;
 
-    private String sexo; // M ou F
+    private String sexo;
 
     private boolean castrado;
 

@@ -20,7 +20,7 @@ public class TutorController {
 
     private final TutorService tutorService;
 
-    // DTO como record — padrão do professor
+
     public record TutorRequest(
             String nome,
             String email,
