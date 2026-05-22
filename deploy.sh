@@ -1,114 +1,38 @@
-#!/bin/bash
-# ============================================================
-# Script Azure CLI — JornadaPet (FIAP DevOps Sprint 1)
-# Provisiona VM, instala Docker e sobe a aplicação
-# ============================================================
+#!/usr/bin/env bash
+set -e
+RG="rg-challenge-clyvo-vet"
+LOCATION="chilecentral"
+VNET="vnet_wise_dev"
+SUBNET="sub_net_dev"
+NSG="nsg_portalweb_dev"
+VM="vm-wise-clyvo-dev-01"
+ADMIN="azureuser"
 
-# --- Variáveis ---
-RESOURCE_GROUP="rg-jornadapet"
-LOCATION="brazilsouth"
-VM_NAME="vm-jornadapet"
-VM_IMAGE="Ubuntu2204"
-VM_SIZE="Standard_B1s"
-ADMIN_USER="azureuser"
-NSG_NAME="nsg-jornadapet"
-REPO_URL="https://github.com/felipeflosi/JornadaPet-java-Sprint1"
+az group create --name "$RG" --location "$LOCATION"
 
-# --- 1. Criar Resource Group ---
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION
+az network vnet create \
+  --resource-group "$RG" --location "$LOCATION" \
+  --name "$VNET" --address-prefixes 10.10.0.0/16 \
+  --subnet-name "$SUBNET" --subnet-prefixes 10.10.1.0/24
 
-# --- 2. Criar VM Linux ---
+az network nsg create \
+  --resource-group "$RG" --location "$LOCATION" --name "$NSG"
+
 az vm create \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --image $VM_IMAGE \
-  --size $VM_SIZE \
-  --admin-username $ADMIN_USER \
-  --generate-ssh-keys \
-  --output json
+  --resource-group "$RG" --name "$VM" \
+  --image Ubuntu2204 --size Standard_B4ls_v2 \
+  --admin-username "$ADMIN" --generate-ssh-keys \
+  --vnet-name "$VNET" --subnet "$SUBNET" --nsg "$NSG"
 
-# Capturar IP público
-PUBLIC_IP=$(az vm show \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --show-details \
-  --query publicIps \
-  --output tsv)
+az vm open-port --resource-group "$RG" --name "$VM" --port 22 --priority 1000
+az vm open-port --resource-group "$RG" --name "$VM" --port 8080 --priority 1001
+az vm open-port --resource-group "$RG" --name "$VM" --port 1521 --priority 1002
 
-echo "IP da VM: $PUBLIC_IP"
-
-# --- 3. Abrir portas necessárias ---
-# Porta 8080 — API Spring Boot
-az vm open-port \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --port 8080 \
-  --priority 1001
-
-# Porta 22 — SSH (já aberta por padrão, mas explícito para o script)
-az vm open-port \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --port 22 \
-  --priority 1000
-
-# --- 4. Instalar Docker, Git e ferramentas na VM ---
 az vm run-command invoke \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
+  --resource-group "$RG" --name "$VM" \
   --command-id RunShellScript \
-  --scripts "
-    # Atualizar pacotes
-    apt-get update -y
+  --scripts "sudo apt-get update && sudo apt-get install -y git nano curl ca-certificates && curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker azureuser"
 
-    # Instalar utilitários
-    apt-get install -y git nano curl wget unzip
-
-    # Instalar Docker
-    curl -fsSL https://get.docker.com | sh
-
-    # Adicionar azureuser ao grupo docker (rodar sem sudo)
-    usermod -aG docker $ADMIN_USER
-
-    # Instalar Docker Compose plugin
-    apt-get install -y docker-compose-plugin
-
-    # Habilitar Docker no boot
-    systemctl enable docker
-    systemctl start docker
-
-    echo 'Instalação concluída'
-  "
-
-# --- 5. Clonar repositório e subir aplicação ---
-az vm run-command invoke \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --command-id RunShellScript \
-  --scripts "
-    cd /home/$ADMIN_USER
-
-    # Clonar projeto
-    git clone $REPO_URL app
-    cd app
-
-    # Subir em background com Docker Compose
-    docker compose up -d --build
-
-    echo 'Aplicação no ar!'
-    docker compose ps
-  "
-
-echo ""
-echo "=============================="
-echo "Deploy concluído!"
-echo "API:        http://$PUBLIC_IP:8080"
-echo "Swagger:    http://$PUBLIC_IP:8080/swagger-ui.html"
-echo "H2 Console: http://$PUBLIC_IP:8080/h2-console"
-echo "=============================="
-
-# --- FIM ---
-# Para deletar tudo ao final da apresentação:
-# az group delete --name $RESOURCE_GROUP --yes --no-wait
+az vm show \
+  --resource-group "$RG" --name "$VM" \
+  --show-details --query publicIps --output tsv
