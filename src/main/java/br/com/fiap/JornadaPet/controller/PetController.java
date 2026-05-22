@@ -25,7 +25,6 @@ public class PetController {
 
     private final PetService petService;
 
-
     public record PetRequest(
             String nome,
             String especie,
@@ -37,7 +36,6 @@ public class PetController {
             String observacoes
     ) {}
 
-
     public record PetResponse(
             Long id,
             String nome,
@@ -45,13 +43,12 @@ public class PetController {
             String raca,
             Double peso,
             LocalDate dataNascimento,
-            int idadeAnos,       // calculado automaticamente
+            int idadeAnos,
             String sexo,
             boolean castrado,
             String observacoes,
             Long tutorId
     ) {}
-
 
     private PetResponse toResponse(Pet pet) {
         int idade = Period.between(pet.getDataNascimento(), LocalDate.now()).getYears();
@@ -110,11 +107,16 @@ public class PetController {
                 .map(this::toResponse);
     }
 
+    
     @GetMapping
-    @Operation(summary = "Listar pets por espécie ou raça")
-    public List<Pet> listarPorEspecie(@RequestParam(required = false) String especie) {
-        if (especie != null) return petService.listarPorEspecie(especie);
-        return petService.listarPorEspecie("cão"); // padrão
+    @Operation(summary = "Listar pets por espécie", description = "Filtra por espécie (padrão: cão) e retorna ordenado por nome")
+    public List<PetResponse> listarPorEspecie(
+            @RequestParam(required = false, defaultValue = "cão") String especie) {
+        return petService.listarPorEspecie(especie).stream()
+                .sorted(java.util.Comparator.comparing(Pet::getNome,
+                        String.CASE_INSENSITIVE_ORDER))
+                .map(this::toResponse)
+                .toList();
     }
 
     @PutMapping("/{id}")
