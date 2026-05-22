@@ -1,22 +1,44 @@
 services:
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: oracle-db
+    environment:
+      ORACLE_PASSWORD: "OracleRoot123"
+      APP_USER: "APP_USER"
+      APP_USER_PASSWORD: "AppPassword123"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - ./sql:/container-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+    networks:
+      - challenge_net
+    restart: unless-stopped
+
   jornadapet:
     build: .
+    image: jornadapet-oracle:local
     container_name: jornadapet-app
+    depends_on:
+      oracle-db:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/jornadapet;AUTO_SERVER=FALSE
-      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
-      - SPRING_DATASOURCE_USERNAME=sa
-      - SPRING_DATASOURCE_PASSWORD=
-      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_H2_CONSOLE_ENABLED=true
-      - SPRING_H2_CONSOLE_SETTINGS_WEB_ALLOW_OTHERS=true
-    volumes:
-      - h2-data:/data
-    restart: unless-stopped
+      SPRING_DATASOURCE_URL: "jdbc:oracle:thin:@oracle-db:1521/XEPDB1"
+      SPRING_DATASOURCE_USERNAME: "APP_USER"
+      SPRING_DATASOURCE_PASSWORD: "AppPassword123"
+    networks:
+      - challenge_net
+    restart: on-failure
+
+networks:
+  challenge_net:
+    driver: bridge
 
 volumes:
-  h2-data:
-    name: jornadapet-h2-data
+  oracle_data:
