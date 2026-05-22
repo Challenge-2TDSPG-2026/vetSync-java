@@ -30,7 +30,7 @@ public class MockData {
                         .nome("Maria Silva")
                         .email("maria@email.com")
                         .telefone("11999990001")
-                        .cpf("111.111.111-11")
+                        .cpf("11111111111")
                         .build()));
 
         Tutor joao = tutorService.buscarPorEmail("joao@email.com")
@@ -38,7 +38,7 @@ public class MockData {
                         .nome("João Souza")
                         .email("joao@email.com")
                         .telefone("11999990002")
-                        .cpf("222.222.222-22")
+                        .cpf("22222222222")
                         .build()));
 
         List<Pet> petsMaria = petRepository.findByTutorId(maria.getId());
