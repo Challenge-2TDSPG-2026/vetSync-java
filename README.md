@@ -1,16 +1,43 @@
-# JornadaPet
-Aplicação backend para continuidade do cuidado e engajamento na jornada de saúde do pet. Desenvolvida em Spring Boot com API RESTful e autenticação JWT — **Clyvo Vet Challenge 2026**.
+# JornadaPet 🐾
+
+Aplicação backend para continuidade do cuidado e engajamento na jornada de saúde do pet. Desenvolvida em Spring Boot com API RESTful e autenticação JWT — Clyvo Vet Challenge 2026.
+
+---
 
 ## Integrantes
+
 | Nome | RM |
 |---|---|
 | Arthur Brito | RM 562085 |
 | Luiz Felipe Flosi | RM 563197 |
 | Pedro Brum | RM 561780 |
 
+---
+
+## 📁 Documentação
+
+Os arquivos de suporte estão na pasta [`/documentos`](./documentos):
+
+| Arquivo | Descrição |
+|---|---|
+| [Coleção Postman](./documentos/JornadaPet_Postman_Collection.json) | Todas as requisições para testar a API (importe no Postman) |
+| [Diagrama de Classes](./documentos/diagrama-classes.png) | Entidades, repositórios, serviços e controllers |
+| [DER](./documentos/der.png) | Diagrama Entidade-Relacionamento das tabelas |
+| [Cronograma](./documentos/cronograma-sprint1.md) | Divisão de tarefas e prazos do Sprint 1 |
+| [Cronograma (xlsx)](./documentos/cronograma.xlsx) | Versão em planilha do cronograma |
+
+---
+
 ## Estrutura do Projeto
+
 ```
 JornadaPet-java-Sprint1/
+├── documentos/
+│   ├── JornadaPet_Postman_Collection.json
+│   ├── diagrama-classes.png
+│   ├── der.png
+│   ├── cronograma-sprint1.md
+│   └── cronograma.xlsx
 ├── src/
 │   └── main/
 │       ├── java/br/com/fiap/JornadaPet/
@@ -46,9 +73,10 @@ JornadaPet-java-Sprint1/
 └── pom.xml
 ```
 
+---
+
 ## Tecnologias
 
-**Backend**
 - Java 17
 - Spring Boot 3
 - Spring Web
@@ -59,50 +87,87 @@ JornadaPet-java-Sprint1/
 - Lombok
 - Springdoc OpenAPI (Swagger UI)
 
+---
+
 ## Como Rodar
 
-**Pré-requisitos**
+### Pré-requisitos
+
 - Java 17+
 - Maven 3.8+
 
-**Backend**
+### Executar
 
 Na raiz do projeto:
-```
+
+```bash
 mvn spring-boot:run
 ```
+
 A API ficará disponível em `http://localhost:8080`
 
-O console do H2 pode ser acessado em `http://localhost:8080/h2-console`
+| Recurso | URL |
+|---|---|
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| H2 Console | http://localhost:8080/h2-console |
+
+**Configurações do H2:**
 - JDBC URL: `jdbc:h2:mem:jornadapet`
 - Usuário: `sa`
-- Senha: (vazio)
+- Senha: *(vazio)*
 
-A documentação Swagger pode ser acessada em `http://localhost:8080/swagger-ui.html`
+---
 
 ## Autenticação
 
-A API utiliza **JWT (JSON Web Token)**. Registre um tutor e faça login para obter o token:
+A API utiliza JWT (JSON Web Token). Siga os passos:
 
+**1. Registre um tutor:**
 ```
 POST /auth/register
-POST /auth/login
+```
+```json
+{
+  "nome": "Carlos Teste",
+  "email": "carlos@email.com",
+  "senha": "senha123",
+  "telefone": "11999998888",
+  "cpf": "12345678901"
+}
 ```
 
-Use o token retornado no header de todas as requisições protegidas:
+**2. Faça login:**
+```
+POST /auth/login
+```
+```json
+{
+  "email": "carlos@email.com",
+  "senha": "senha123"
+}
+```
+
+**3. Use o token retornado em todas as requisições protegidas:**
 ```
 Authorization: Bearer <token>
 ```
 
+> ⚠️ Os tutores do MockData não possuem senha. Para autenticar, cadastre um novo tutor via `POST /auth/register`.
+
+---
+
 ## Endpoints da API
 
-**Auth**
+### Auth
+
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/auth/register` | Cadastrar tutor com senha |
 | POST | `/auth/login` | Login — retorna JWT |
 
-**Tutores**
+### Tutores
+
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/tutores` | Lista todos os tutores |
@@ -111,7 +176,8 @@ Authorization: Bearer <token>
 | PUT | `/tutores/{id}` | Atualizar tutor |
 | DELETE | `/tutores/{id}` | Deletar tutor |
 
-**Pets**
+### Pets
+
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/pets/tutor/{tutorId}` | Cadastrar pet vinculado a um tutor |
@@ -121,7 +187,8 @@ Authorization: Bearer <token>
 | PUT | `/pets/{id}` | Atualizar pet |
 | DELETE | `/pets/{id}` | Deletar pet |
 
-**Eventos de Saúde**
+### Eventos de Saúde
+
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/pets/{petId}/eventos` | Registrar evento de saúde |
@@ -133,15 +200,18 @@ Authorization: Bearer <token>
 | PUT | `/pets/{petId}/eventos/{id}` | Atualizar evento |
 | DELETE | `/pets/{petId}/eventos/{id}` | Deletar evento |
 
-**Parâmetros de paginação**
+### Parâmetros de paginação
 
-Os endpoints de listagem aceitam os parâmetros padrão do Spring:
 ```
 GET /pets/tutor/1?page=0&size=10&sort=nome,asc
 GET /pets/1/eventos?page=0&size=10&sort=dataProxima,asc
 ```
 
-**Exemplo de resposta — GET /pets/{id}**
+---
+
+## Exemplo de Resposta
+
+**GET /pets/{id}**
 ```json
 {
   "id": 1,
@@ -157,6 +227,8 @@ GET /pets/1/eventos?page=0&size=10&sort=dataProxima,asc
   "tutorId": 1
 }
 ```
+
+---
 
 ## Modelo de Dados
 
@@ -195,11 +267,12 @@ GET /pets/1/eventos?page=0&size=10&sort=dataProxima,asc
 └── pet             Pet (ManyToOne)
 ```
 
+---
+
 ## Dados de Exemplo
 
 A classe `MockData` é carregada automaticamente ao iniciar a aplicação e popula o banco com:
+
 - 2 tutores (Maria Silva, João Souza)
 - 3 pets (Buddy — Golden Retriever, Luna — Siamês, Rex — Pastor Alemão)
 - 3 eventos de saúde (banho atrasado, consulta realizada, vacina pendente)
-
-> ⚠️ Os tutores do MockData não possuem senha. Para autenticar, cadastre um novo tutor via `POST /auth/register`.
