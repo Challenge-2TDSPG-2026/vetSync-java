@@ -6,12 +6,15 @@ import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
+import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Auth", description = "Login e registro de tutores e veterinários")
+@Tag(name = "Auth", description = "Registro, login, logout e sessão do usuário")
 public class AuthController {
 
     private final AuthenticationManager authManager;
@@ -28,83 +31,125 @@ public class AuthController {
     private final VeterinarioRepository veterinarioRepository;
     private final ClinicaRepository clinicaRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklist tokenBlacklist;
+
+    private static final int SENHA_MIN_LENGTH = 6;
 
     public record LoginRequest(String email, String senha) {}
 
-    public record RegisterTutorRequest(
-            String nmTutor, String dsEmail, String dsSenha,
-            String nrTelefone, String dsCpf
+    public record RegistrarRequest(
+            String tipo,
+            String nome,
+            String email,
+            String senha,
+            String cpf,
+            String telefone,
+            String crmv,
+            Long idClinica
     ) {}
 
-    public record RegisterVeterinarioRequest(
-            String nmVeterinario, String nrCrmv, String dsEmail,
-            String dsSenha, Long idClinica
-    ) {}
-
-    public record AuthResponse(String token, String email, String nome, String perfil) {}
+    public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil) {}
+    public record MeResponse(Long idUsuario, String email, String nome, String perfil) {}
 
     @PostMapping("/login")
-    @Operation(summary = "Login — funciona para tutor ou veterinário, retorna token JWT")
+    @Operation(summary = "Login — apenas e-mail e senha. Funciona para tutor ou veterinário.")
     public AuthResponse login(@RequestBody LoginRequest req) {
         try {
             authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(req.email(), req.senha())
             );
         } catch (BadCredentialsException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
         }
-
-        var tutor = tutorRepository.findByDsEmail(req.email());
-        if (tutor.isPresent()) {
-            return new AuthResponse(jwtService.gerarToken(req.email()), tutor.get().getDsEmail(),
-                    tutor.get().getNmTutor(), "TUTOR");
-        }
-
-        var vet = veterinarioRepository.findByDsEmail(req.email());
-        if (vet.isPresent()) {
-            return new AuthResponse(jwtService.gerarToken(req.email()), vet.get().getDsEmail(),
-                    vet.get().getNmVeterinario(), "VETERINARIO");
-        }
-
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        return montarAuthResponse(req.email(), jwtService.gerarToken(req.email()));
     }
 
-    @PostMapping("/register")
+    @PostMapping("/registrar")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cadastrar novo tutor com senha")
-    public AuthResponse register(@RequestBody RegisterTutorRequest req) {
-        if (tutorRepository.existsByDsEmail(req.dsEmail())) {
+    @Operation(summary = "Cadastrar novo usuário", description = "tipo: TUTOR ou VETERINARIO. Senha com no mínimo 6 caracteres.")
+    public AuthResponse registrar(@RequestBody RegistrarRequest req) {
+        if (req.senha() == null || req.senha().length() < SENHA_MIN_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
+        }
+        if ("VETERINARIO".equalsIgnoreCase(req.tipo())) {
+            return registrarVeterinario(req);
+        }
+        return registrarTutor(req);
+    }
+
+    private AuthResponse registrarTutor(RegistrarRequest req) {
+        if (tutorRepository.existsByDsEmail(req.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         var tutor = Tutor.builder()
-                .nmTutor(req.nmTutor())
-                .dsEmail(req.dsEmail())
-                .dsSenha(passwordEncoder.encode(req.dsSenha()))
-                .nrTelefone(req.nrTelefone())
-                .dsCpf(req.dsCpf())
+                .nmTutor(req.nome())
+                .dsEmail(req.email())
+                .dsSenha(passwordEncoder.encode(req.senha()))
+                .dsCpf(req.cpf())
+                .nrTelefone(req.telefone())
                 .build();
-        tutorRepository.save(tutor);
-        return new AuthResponse(jwtService.gerarToken(req.dsEmail()), req.dsEmail(), req.nmTutor(), "TUTOR");
+        tutor = tutorRepository.save(tutor);
+        return new AuthResponse(jwtService.gerarToken(req.email()), tutor.getIdTutor(),
+                req.email(), req.nome(), "TUTOR");
     }
 
-    @PostMapping("/register/veterinario")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cadastrar novo veterinário com senha", description = "Requer uma clínica já cadastrada (idClinica)")
-    public AuthResponse registerVeterinario(@RequestBody RegisterVeterinarioRequest req) {
-        if (veterinarioRepository.existsByDsEmail(req.dsEmail())) {
+    private AuthResponse registrarVeterinario(RegistrarRequest req) {
+        if (veterinarioRepository.existsByDsEmail(req.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+        }
+        if (req.idClinica() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idClinica é obrigatório para veterinário");
         }
         Clinica clinica = clinicaRepository.findById(req.idClinica())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
 
         var vet = Veterinario.builder()
-                .nmVeterinario(req.nmVeterinario())
-                .nrCrmv(req.nrCrmv())
-                .dsEmail(req.dsEmail())
-                .dsSenha(passwordEncoder.encode(req.dsSenha()))
+                .nmVeterinario(req.nome())
+                .nrCrmv(req.crmv())
+                .dsEmail(req.email())
+                .dsSenha(passwordEncoder.encode(req.senha()))
                 .clinica(clinica)
                 .build();
-        veterinarioRepository.save(vet);
-        return new AuthResponse(jwtService.gerarToken(req.dsEmail()), req.dsEmail(), req.nmVeterinario(), "VETERINARIO");
+        vet = veterinarioRepository.save(vet);
+        return new AuthResponse(jwtService.gerarToken(req.email()), vet.getIdVeterinario(),
+                req.email(), req.nome(), "VETERINARIO");
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Invalidar o token atual", description = "Precisa estar autenticado; o token enviado deixa de funcionar a partir daqui.")
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            tokenBlacklist.revogar(authHeader.substring(7));
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Dados do usuário autenticado (para restaurar a sessão no app)")
+    public MeResponse me(Authentication authentication) {
+        String email = authentication.getName();
+
+        var tutor = tutorRepository.findByDsEmail(email);
+        if (tutor.isPresent()) {
+            return new MeResponse(tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR");
+        }
+        var vet = veterinarioRepository.findByDsEmail(email);
+        if (vet.isPresent()) {
+            return new MeResponse(vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+    }
+
+    private AuthResponse montarAuthResponse(String email, String token) {
+        var tutor = tutorRepository.findByDsEmail(email);
+        if (tutor.isPresent()) {
+            return new AuthResponse(token, tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR");
+        }
+        var vet = veterinarioRepository.findByDsEmail(email);
+        if (vet.isPresent()) {
+            return new AuthResponse(token, vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
     }
 }

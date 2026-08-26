@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,13 +51,15 @@ public class TutorController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Buscar tutor por ID")
+    @PreAuthorize("hasRole('VETERINARIO') or @tutorSecurity.isSelf(#id, authentication)")
+    @Operation(summary = "Buscar tutor por ID", description = "Veterinário vê qualquer um; tutor só vê o próprio cadastro.")
     public TutorResponse buscarPorId(@PathVariable Long id) {
         return toResponse(tutorService.buscarPorId(id));
     }
 
     @GetMapping
-    @Operation(summary = "Listar todos os tutores")
+    @PreAuthorize("hasRole('VETERINARIO')")
+    @Operation(summary = "Listar todos os tutores. Somente VETERINARIO.")
     public List<TutorResponse> listarTodos() {
         return tutorService.listarTodos().stream()
                 .map(this::toResponse)
@@ -64,7 +67,8 @@ public class TutorController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Atualizar dados do tutor (nome e telefone)")
+    @PreAuthorize("@tutorSecurity.isSelf(#id, authentication)")
+    @Operation(summary = "Atualizar dados do tutor (nome e telefone). Só o próprio tutor.")
     public TutorResponse atualizar(@PathVariable Long id, @RequestBody @Valid TutorAtualizarRequest request) {
         Tutor tutorAtualizado = Tutor.builder()
                 .nmTutor(request.nmTutor())
@@ -75,7 +79,8 @@ public class TutorController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Deletar tutor")
+    @PreAuthorize("@tutorSecurity.isSelf(#id, authentication)")
+    @Operation(summary = "Deletar tutor. Só o próprio tutor.")
     public void deletar(@PathVariable Long id) {
         tutorService.deletar(id);
     }

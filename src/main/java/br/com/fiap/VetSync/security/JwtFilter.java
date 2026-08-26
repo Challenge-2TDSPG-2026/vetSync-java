@@ -8,6 +8,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 @Component
@@ -16,6 +17,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final AppUserDetailsService userDetailsService;
+    private final TokenBlacklist tokenBlacklist;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req,
@@ -24,7 +26,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String header = req.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            if (jwtService.tokenValido(token)) {
+            if (!tokenBlacklist.isRevogado(token) && jwtService.tokenValido(token)) {
                 String email = jwtService.extrairEmail(token);
                 var user = userDetailsService.loadUserByUsername(email);
                 var auth = new UsernamePasswordAuthenticationToken(
