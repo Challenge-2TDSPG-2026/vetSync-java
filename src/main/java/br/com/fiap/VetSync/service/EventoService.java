@@ -1,9 +1,6 @@
 package br.com.fiap.VetSync.service;
 
-import br.com.fiap.VetSync.entity.EventoSaude;
-import br.com.fiap.VetSync.entity.Pet;
-import br.com.fiap.VetSync.entity.TipoEvento;
-import br.com.fiap.VetSync.entity.Veterinario;
+import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.EventoSaudeRepository;
 import br.com.fiap.VetSync.repository.TipoEventoRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
@@ -15,10 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,56 +24,103 @@ public class EventoService {
     private final TipoEventoRepository tipoEventoRepository;
     private final VeterinarioRepository veterinarioRepository;
 
-    // Regra de negocio: se o ultimo evento de um tipo foi ha 12 meses
-    // ou mais, o pet "pode estar atrasado" naquele tipo de cuidado.
     private static final long MESES_LIMITE_ATRASO = 12;
 
     public record AlertaEvento(
-            String nmTipoEvento,
-            LocalDate ultimaData,
-            long mesesDesdeUltimo,
-            boolean atrasado,
-            String mensagem
+            String nmTipoEvento, LocalDate ultimaData, long mesesDesdeUltimo, boolean atrasado, String mensagem
     ) {}
 
-    public EventoSaude registrar(EventoSaude evento, Long idPet, Long idTipoEvento, Long idVeterinario) {
+
+    public EventoSaude solicitar(EventoSaude evento, Long idPet, Long idTipoEvento, Long idVeterinario) {
         Pet pet = petService.buscarPorId(idPet);
         TipoEvento tipoEvento = tipoEventoRepository.findById(idTipoEvento).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento)
-        );
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
+        Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado: " + idVeterinario));
+
         evento.setPet(pet);
         evento.setTipoEvento(tipoEvento);
-        if (idVeterinario != null) {
-            Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado: " + idVeterinario)
-            );
-            evento.setVeterinario(vet);
-        }
+        evento.setVeterinario(vet);
+        evento.setDsStatus(StatusEvento.SOLICITADO);
         return eventoSaudeRepository.save(evento);
     }
 
     public EventoSaude buscarPorId(Long id) {
         return eventoSaudeRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado com id: " + id)
-        );
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado com id: " + id));
     }
 
     public List<EventoSaude> listarPorPet(Long idPet) {
         return eventoSaudeRepository.findByPet_IdPet(idPet);
     }
 
-    public BigDecimal calcularGastoTotal(Long idPet) {
-        return listarPorPet(idPet).stream()
-                .map(EventoSaude::getVlCusto)
-                .filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public List<EventoSaude> listarParaTutor(String email) {
+        return eventoSaudeRepository.findByPet_Tutor_DsEmailOrderByDtEventoDesc(email);
+    }
+
+    public List<EventoSaude> listarParaVeterinario(String email) {
+        return eventoSaudeRepository.findByVeterinario_DsEmailOrderByDtEventoDesc(email);
     }
 
 
-    public List<AlertaEvento> gerarAlertas(Long idPet) {
-        List<EventoSaude> eventos = listarPorPet(idPet);
+    public EventoSaude confirmar(Long id) {
+        EventoSaude evento = buscarPorId(id);
+        exigirStatus(evento, StatusEvento.SOLICITADO, "confirmar");
+        evento.setDsStatus(StatusEvento.CONFIRMADO);
+        return eventoSaudeRepository.save(evento);
+    }
 
-        Map<TipoEvento, EventoSaude> maisRecentePorTipo = eventos.stream()
+    public EventoSaude concluir(Long id, String dsObservacao, BigDecimal vlCusto) {
+        EventoSaude evento = buscarPorId(id);
+        exigirStatus(evento, StatusEvento.CONFIRMADO, "concluir");
+        evento.setDsStatus(StatusEvento.CONCLUIDO);
+        if (dsObservacao != null) {
+            evento.setDsObservacao(dsObservacao);
+        }
+        evento.setVlCusto(vlCusto != null ? vlCusto : BigDecimal.ZERO);
+        return eventoSaudeRepository.save(evento);
+
+    }
+
+    public EventoSaude cancelar(Long id, String motivo) {
+        EventoSaude evento = buscarPorId(id);
+        if (evento.getDsStatus() == StatusEvento.CONCLUIDO || evento.getDsStatus() == StatusEvento.CANCELADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível cancelar um evento que já está " + evento.getDsStatus());
+        }
+        evento.setDsStatus(StatusEvento.CANCELADO);
+        evento.setDsMotivoCancelamento(motivo);
+        return eventoSaudeRepository.save(evento);
+    }
+
+    private void exigirStatus(EventoSaude evento, StatusEvento esperado, String acao) {
+        if (evento.getDsStatus() != esperado) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Só é possível " + acao + " um evento que está " + esperado
+                            + " (status atual: " + evento.getDsStatus() + ")");
+        }
+    }
+
+    public void deletar(Long id) {
+        EventoSaude evento = buscarPorId(id);
+        eventoSaudeRepository.delete(evento);
+    }
+
+
+    public BigDecimal calcularGastoTotal(Long idPet) {
+        return listarPorPet(idPet).stream()
+                .filter(e -> e.getDsStatus() == StatusEvento.CONCLUIDO)
+                .map(EventoSaude::getVlCusto)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public List<AlertaEvento> gerarAlertas(Long idPet) {
+        List<EventoSaude> concluidos = listarPorPet(idPet).stream()
+                .filter(e -> e.getDsStatus() == StatusEvento.CONCLUIDO)
+                .toList();
+
+        Map<TipoEvento, EventoSaude> maisRecentePorTipo = concluidos.stream()
                 .collect(Collectors.toMap(
                         EventoSaude::getTipoEvento,
                         e -> e,
@@ -97,21 +138,7 @@ public class EventoService {
                     : "Último \"" + tipo.getNmTipoEvento() + "\" foi há " + meses + " meses — em dia";
             alertas.add(new AlertaEvento(tipo.getNmTipoEvento(), ultimo.getDtEvento(), meses, atrasado, mensagem));
         }
-
         alertas.sort(Comparator.comparing(AlertaEvento::atrasado).reversed());
         return alertas;
-    }
-
-    public EventoSaude atualizar(Long id, EventoSaude eventoAtualizado) {
-        EventoSaude evento = buscarPorId(id);
-        evento.setDtEvento(eventoAtualizado.getDtEvento());
-        evento.setDsObservacao(eventoAtualizado.getDsObservacao());
-        evento.setVlCusto(eventoAtualizado.getVlCusto());
-        return eventoSaudeRepository.save(evento);
-    }
-
-    public void deletar(Long id) {
-        EventoSaude evento = buscarPorId(id);
-        eventoSaudeRepository.delete(evento);
     }
 }

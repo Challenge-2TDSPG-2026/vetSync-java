@@ -42,4 +42,12 @@ public class EventoSaude {
     @Builder.Default
     @Column(name = "vl_custo", precision = 10, scale = 2)
     private BigDecimal vlCusto = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "ds_status", nullable = false, length = 20)
+    private StatusEvento dsStatus = StatusEvento.SOLICITADO;
+
+    @Column(name = "ds_motivo_cancelamento", length = 300)
+    private String dsMotivoCancelamento;
 }
