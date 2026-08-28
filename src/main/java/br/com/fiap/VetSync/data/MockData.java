@@ -28,10 +28,10 @@ public class MockData {
     @PostConstruct
     public void init() {
         if (tutorRepository.count() > 0) {
-            return; // já populado, não duplica em restarts
+            return;
         }
 
-        // Espécies e raças
+
         Especie cachorro = especieRepository.save(Especie.builder().nmEspecie("Cachorro").build());
         Especie gato = especieRepository.save(Especie.builder().nmEspecie("Gato").build());
 
@@ -39,7 +39,7 @@ public class MockData {
         Raca siames = racaRepository.save(Raca.builder().nmRaca("Siamês").especie(gato).build());
         Raca pastorAlemao = racaRepository.save(Raca.builder().nmRaca("Pastor Alemão").especie(cachorro).build());
 
-        // Clínica e veterinário
+
         Clinica clinica = clinicaRepository.save(Clinica.builder()
                 .nmClinica("Clyvo Vet")
                 .dsCnpj("12345678000199")
@@ -55,15 +55,15 @@ public class MockData {
                 .clinica(clinica)
                 .build());
 
-        // Tipos de evento
-        TipoEvento vacina = tipoEventoRepository.save(TipoEvento.builder()
-                .nmTipoEvento("Vacina").dsCategoria("PREVENTIVO").build());
-        TipoEvento consulta = tipoEventoRepository.save(TipoEvento.builder()
-                .nmTipoEvento("Consulta de rotina").dsCategoria("PREVENTIVO").build());
-        TipoEvento banho = tipoEventoRepository.save(TipoEvento.builder()
-                .nmTipoEvento("Banho e tosa").dsCategoria("BEM_ESTAR").build());
 
-        // Tutores
+        TipoEvento vacina = tipoEventoRepository.save(TipoEvento.builder()
+                .nmTipoEvento("Vacina").dsCategoria("PREVENTIVO").nrPontos(20).build());
+        TipoEvento consulta = tipoEventoRepository.save(TipoEvento.builder()
+                .nmTipoEvento("Consulta de rotina").dsCategoria("PREVENTIVO").nrPontos(15).build());
+        TipoEvento banho = tipoEventoRepository.save(TipoEvento.builder()
+                .nmTipoEvento("Banho e tosa").dsCategoria("BEM_ESTAR").nrPontos(5).build());
+
+
         Tutor maria = tutorRepository.save(Tutor.builder()
                 .nmTutor("Maria Silva")
                 .dsEmail("maria@email.com")
@@ -80,7 +80,7 @@ public class MockData {
                 .dsCpf("22222222222")
                 .build());
 
-        // Pets
+
         Pet buddy = petRepository.save(Pet.builder()
                 .nmPet("Buddy")
                 .dtNascimento(LocalDate.now().minusMonths(3))
@@ -108,12 +108,13 @@ public class MockData {
                 .raca(pastorAlemao)
                 .build());
 
-        // Eventos de saúde
+
         eventoSaudeRepository.save(EventoSaude.builder()
                 .pet(buddy).tipoEvento(banho).veterinario(dra)
                 .dtEvento(LocalDate.now().minusDays(10))
                 .dsObservacao("Banho e tosa de rotina")
                 .vlCusto(new BigDecimal("80.00"))
+                .dsStatus(StatusEvento.CONCLUIDO)
                 .build());
 
         eventoSaudeRepository.save(EventoSaude.builder()
@@ -121,6 +122,7 @@ public class MockData {
                 .dtEvento(LocalDate.now().minusMonths(1))
                 .dsObservacao("Consulta de rotina, tudo normal")
                 .vlCusto(new BigDecimal("150.00"))
+                .dsStatus(StatusEvento.CONCLUIDO)
                 .build());
 
         eventoSaudeRepository.save(EventoSaude.builder()
@@ -128,6 +130,7 @@ public class MockData {
                 .dtEvento(LocalDate.now().minusDays(5))
                 .dsObservacao("Vacina antirrábica anual")
                 .vlCusto(new BigDecimal("120.00"))
+                .dsStatus(StatusEvento.CONCLUIDO)
                 .build());
     }
 }

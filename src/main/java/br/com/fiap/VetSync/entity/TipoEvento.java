@@ -23,4 +23,7 @@ public class TipoEvento {
 
     @Column(name = "ds_categoria", length = 30)
     private String dsCategoria;
+    @Builder.Default
+    @Column(name = "nr_pontos", nullable = false)
+    private Integer nrPontos = 0;
 }
