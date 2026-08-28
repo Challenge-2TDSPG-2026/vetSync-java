@@ -22,5 +22,5 @@ public class TipoEvento {
     private String nmTipoEvento;
 
     @Column(name = "ds_categoria", length = 30)
-    private String dsCategoria; // PREVENTIVO, TERAPEUTICO, BEM_ESTAR ou EMERGENCIA
+    private String dsCategoria;
 }

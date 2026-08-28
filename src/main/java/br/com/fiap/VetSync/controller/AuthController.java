@@ -1,13 +1,12 @@
 package br.com.fiap.VetSync.controller;
 
-import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.entity.Veterinario;
-import br.com.fiap.VetSync.repository.ClinicaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
+import br.com.fiap.VetSync.service.VeterinarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final TutorRepository tutorRepository;
     private final VeterinarioRepository veterinarioRepository;
-    private final ClinicaRepository clinicaRepository;
+    private final VeterinarioService veterinarioService;
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklist tokenBlacklist;
 
@@ -73,7 +72,8 @@ public class AuthController {
                     "A senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
         }
         if ("VETERINARIO".equalsIgnoreCase(req.tipo())) {
-            return registrarVeterinario(req);
+            Veterinario vet = veterinarioService.cadastrar(req.nome(), req.crmv(), req.email(), req.senha(), req.idClinica());
+            return new AuthResponse(jwtService.gerarToken(req.email()), vet.getIdVeterinario(), req.email(), req.nome(), "VETERINARIO");
         }
         return registrarTutor(req);
     }
@@ -92,28 +92,6 @@ public class AuthController {
         tutor = tutorRepository.save(tutor);
         return new AuthResponse(jwtService.gerarToken(req.email()), tutor.getIdTutor(),
                 req.email(), req.nome(), "TUTOR");
-    }
-
-    private AuthResponse registrarVeterinario(RegistrarRequest req) {
-        if (veterinarioRepository.existsByDsEmail(req.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
-        }
-        if (req.idClinica() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idClinica é obrigatório para veterinário");
-        }
-        Clinica clinica = clinicaRepository.findById(req.idClinica())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
-
-        var vet = Veterinario.builder()
-                .nmVeterinario(req.nome())
-                .nrCrmv(req.crmv())
-                .dsEmail(req.email())
-                .dsSenha(passwordEncoder.encode(req.senha()))
-                .clinica(clinica)
-                .build();
-        vet = veterinarioRepository.save(vet);
-        return new AuthResponse(jwtService.gerarToken(req.email()), vet.getIdVeterinario(),
-                req.email(), req.nome(), "VETERINARIO");
     }
 
     @PostMapping("/logout")
