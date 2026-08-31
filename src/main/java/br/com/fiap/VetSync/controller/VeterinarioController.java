@@ -4,7 +4,6 @@ import br.com.fiap.VetSync.entity.BloqueioAgenda;
 import br.com.fiap.VetSync.entity.Disponibilidade;
 import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.service.AgendaService;
-import br.com.fiap.VetSync.service.JwtService;
 import br.com.fiap.VetSync.service.VeterinarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,22 +18,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/veterinarios")
 @RequiredArgsConstructor
-@Tag(name = "Veterinários", description = "Cadastro, perfil e agenda (disponibilidade e bloqueios)")
+@Tag(name = "Veterinários", description = "Cadastro (só ADMIN), perfil e agenda")
 public class VeterinarioController {
 
     private final VeterinarioService veterinarioService;
     private final AgendaService agendaService;
-    private final JwtService jwtService;
-
-    private static final int SENHA_MIN_LENGTH = 6;
 
 
 
-    public record VeterinarioRequest(String nome, String crmv, String email, String senha, Long idClinica) {}
+    public record VeterinarioRequest(String nome, String email, Long idClinica) {}
     public record VeterinarioAtualizarRequest(String nome, Long idClinica) {}
 
     public record VeterinarioResponse(Long idVeterinario, String nmVeterinario, String nrCrmv, String dsEmail, Long idClinica, String nmClinica) {}
-    public record CadastroResponse(String token, Long idVeterinario, String email, String nome) {}
+    public record CadastroResponse(Long idVeterinario, String email, String nome, String crm, String senhaTemporaria) {}
 
     private VeterinarioResponse toResponse(Veterinario vet) {
         return new VeterinarioResponse(
@@ -58,14 +54,15 @@ public class VeterinarioController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cadastrar veterinário", description = "Requer idClinica de uma clínica já existente. Senha com mínimo 6 caracteres.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Cadastrar veterinário. Somente ADMIN.",
+            description = "Gera CRM (6 dígitos) e senha temporária automaticamente, enviados por e-mail ao veterinário.")
     public CadastroResponse cadastrar(@RequestBody VeterinarioRequest request) {
-        if (request.senha() == null || request.senha().length() < SENHA_MIN_LENGTH) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
-        }
-        Veterinario vet = veterinarioService.cadastrar(request.nome(), request.crmv(), request.email(), request.senha(), request.idClinica());
-        return new CadastroResponse(jwtService.gerarToken(vet.getDsEmail()), vet.getIdVeterinario(), vet.getDsEmail(), vet.getNmVeterinario());
+        var novo = veterinarioService.cadastrar(request.nome(), request.email(), request.idClinica());
+        return new CadastroResponse(
+                novo.veterinario().getIdVeterinario(), novo.veterinario().getDsEmail(),
+                novo.veterinario().getNmVeterinario(), novo.veterinario().getNrCrmv(), novo.senhaTemporaria()
+        );
     }
 
     @PutMapping("/{id}")
@@ -75,7 +72,7 @@ public class VeterinarioController {
         return toResponse(veterinarioService.atualizar(id, request.nome(), request.idClinica()));
     }
 
-    // ===== Disponibilidade =====
+
 
     public record DisponibilidadeRequest(Integer nrDiaSemana, String hrInicio, String hrFim) {}
     public record DisponibilidadeResponse(Long idDisponibilidade, Integer nrDiaSemana, String hrInicio, String hrFim) {}
@@ -106,7 +103,7 @@ public class VeterinarioController {
         agendaService.removerDisponibilidade(id, idDisponibilidade);
     }
 
-    // ===== Bloqueios =====
+
 
     public record BloqueioRequest(LocalDate dtInicio, LocalDate dtFim, String motivo) {}
     public record BloqueioResponse(Long idBloqueio, LocalDate dtInicio, LocalDate dtFim, String motivo) {}
