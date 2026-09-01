@@ -9,7 +9,12 @@ import java.util.Optional;
 
 public interface LancamentoPontosRepository extends JpaRepository<LancamentoPontos, Long> {
     Optional<LancamentoPontos> findByEvento_IdEvento(Long idEvento);
+    Optional<LancamentoPontos> findByPlanoTratamento_IdPlano(Long idPlano);
     List<LancamentoPontos> findByDsStatusOrderByDtLancamentoAsc(StatusLancamentoPontos status);
+
     List<LancamentoPontos> findByEvento_Pet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusLancamentoPontos status);
+    List<LancamentoPontos> findByPlanoTratamento_Pet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusLancamentoPontos status);
+
     List<LancamentoPontos> findByEvento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(String email);
+    List<LancamentoPontos> findByPlanoTratamento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(String email);
 }

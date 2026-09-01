@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -17,13 +19,28 @@ public class PontosService {
     private final LancamentoPontosRepository lancamentoPontosRepository;
     private final AdminRepository adminRepository;
 
-
+    /**
+     * Chamado quando um evento vira CONCLUIDO. Cria o lançamento PENDENTE
+     * com os pontos do tipo de evento — não credita nada ainda, só entra na
+     * fila de liberação do admin.
+     */
     public LancamentoPontos lancarPendente(EventoSaude evento) {
         int pontos = evento.getTipoEvento() != null && evento.getTipoEvento().getNrPontos() != null
                 ? evento.getTipoEvento().getNrPontos() : 0;
         LancamentoPontos lancamento = LancamentoPontos.builder()
                 .evento(evento)
                 .nrPontos(pontos)
+                .dsStatus(StatusLancamentoPontos.PENDENTE)
+                .build();
+        return lancamentoPontosRepository.save(lancamento);
+    }
+
+
+    public LancamentoPontos lancarBonusPendente(PlanoTratamento plano) {
+        int bonus = plano.getNrPontosBonus() != null ? plano.getNrPontosBonus() : 0;
+        LancamentoPontos lancamento = LancamentoPontos.builder()
+                .planoTratamento(plano)
+                .nrPontos(bonus)
                 .dsStatus(StatusLancamentoPontos.PENDENTE)
                 .build();
         return lancamentoPontosRepository.save(lancamento);
@@ -38,11 +55,16 @@ public class PontosService {
         return lancamentoPontosRepository.findByDsStatusOrderByDtLancamentoAsc(StatusLancamentoPontos.PENDENTE);
     }
 
+
     public List<LancamentoPontos> listarParaTutor(String email) {
-        return lancamentoPontosRepository.findByEvento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(email);
+        List<LancamentoPontos> lancamentos = new ArrayList<>();
+        lancamentos.addAll(lancamentoPontosRepository.findByEvento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(email));
+        lancamentos.addAll(lancamentoPontosRepository.findByPlanoTratamento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(email));
+        lancamentos.sort(Comparator.comparing(LancamentoPontos::getDtLancamento).reversed());
+        return lancamentos;
     }
 
-    /** Admin libera um lançamento pendente, creditando os pontos no saldo do tutor. */
+
     public LancamentoPontos liberar(Long idLancamento, Long idAdmin) {
         LancamentoPontos lancamento = buscarPorId(idLancamento);
         if (lancamento.getDsStatus() != StatusLancamentoPontos.PENDENTE) {
@@ -57,11 +79,16 @@ public class PontosService {
         return lancamentoPontosRepository.save(lancamento);
     }
 
-    /** Soma só os pontos já liberados pelo admin — é isso que compõe o saldo do tutor. */
+
     public int calcularPontosLiberados(Long idTutor) {
-        return lancamentoPontosRepository.findByEvento_Pet_Tutor_IdTutorAndDsStatus(idTutor, StatusLancamentoPontos.LIBERADO)
-                .stream()
-                .mapToInt(LancamentoPontos::getNrPontos)
-                .sum();
+        int deEventos = lancamentoPontosRepository
+                .findByEvento_Pet_Tutor_IdTutorAndDsStatus(idTutor, StatusLancamentoPontos.LIBERADO)
+                .stream().mapToInt(LancamentoPontos::getNrPontos).sum();
+
+        int deBonusPlano = lancamentoPontosRepository
+                .findByPlanoTratamento_Pet_Tutor_IdTutorAndDsStatus(idTutor, StatusLancamentoPontos.LIBERADO)
+                .stream().mapToInt(LancamentoPontos::getNrPontos).sum();
+
+        return deEventos + deBonusPlano;
     }
 }

@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/pontos")
 @RequiredArgsConstructor
-@Tag(name = "Pontos", description = "Lançamentos de pontos por evento concluído — ficam PENDENTE até o ADMIN liberar")
+@Tag(name = "Pontos", description = "Lançamentos de pontos (por evento concluído ou bônus de plano de tratamento) — ficam PENDENTE até o ADMIN liberar")
 public class PontosController {
 
     private final PontosService pontosService;
@@ -28,24 +28,31 @@ public class PontosController {
     public record LancamentoPontosResponse(
             Long idLancamento,
             String status,
+            String origem,
             Integer nrPontos,
             LocalDate dtLancamento,
             Long idEvento,
             String nmTipoEvento,
+            Long idPlano,
             String nmPet,
             String nmTutor
     ) {}
 
     private LancamentoPontosResponse toResponse(LancamentoPontos l) {
         var evento = l.getEvento();
-        var pet = evento != null ? evento.getPet() : null;
+        var plano = l.getPlanoTratamento();
+        var pet = evento != null ? evento.getPet() : (plano != null ? plano.getPet() : null);
+        String origem = evento != null ? "EVENTO" : "BONUS_PLANO";
+
         return new LancamentoPontosResponse(
                 l.getIdLancamento(),
                 l.getDsStatus().name(),
+                origem,
                 l.getNrPontos(),
                 l.getDtLancamento(),
                 evento != null ? evento.getIdEvento() : null,
                 evento != null && evento.getTipoEvento() != null ? evento.getTipoEvento().getNmTipoEvento() : null,
+                plano != null ? plano.getIdPlano() : null,
                 pet != null ? pet.getNmPet() : null,
                 pet != null && pet.getTutor() != null ? pet.getTutor().getNmTutor() : null
         );
@@ -58,7 +65,7 @@ public class PontosController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar lançamentos de pontos", description = "Tutor vê os próprios (pendentes e liberados); admin vê a fila de pendentes.")
+    @Operation(summary = "Listar lançamentos de pontos", description = "Tutor vê os próprios (pendentes e liberados, de evento ou bônus de plano); admin vê a fila de pendentes.")
     public List<LancamentoPontosResponse> listar(Authentication authentication) {
         boolean ehAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));

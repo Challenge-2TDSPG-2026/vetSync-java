@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 
+
 @Entity
 @Table(name = "TB_LANCAMENTO_PONTOS")
 @Data
@@ -19,8 +20,12 @@ public class LancamentoPontos {
     private Long idLancamento;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_evento", nullable = false, unique = true)
+    @JoinColumn(name = "id_evento", unique = true)
     private EventoSaude evento;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_plano_tratamento", unique = true)
+    private PlanoTratamento planoTratamento;
 
     @Column(name = "nr_pontos", nullable = false)
     private Integer nrPontos;
