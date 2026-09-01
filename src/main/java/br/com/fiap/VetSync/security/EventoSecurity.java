@@ -28,13 +28,12 @@ public class EventoSecurity {
                 .orElse(false);
     }
 
-    /** Para ler o evento (GET) ou cancelar: qualquer um dos dois lados envolvidos. */
+
     public boolean isRelacionado(Long idEvento, Authentication authentication) {
         return isVeterinarioResponsavel(idEvento, authentication) || isTutorDoPet(idEvento, authentication);
     }
 
-    /** Deletar (hard delete): veterinário sempre pode; tutor só se
-     * ainda estiver SOLICITADO (arrependimento antes do vet responder). */
+
     public boolean canDelete(Long idEvento, Authentication authentication) {
         if (authentication == null || idEvento == null) return false;
         return eventoSaudeRepository.findById(idEvento).map(e -> {
@@ -42,7 +41,7 @@ public class EventoSecurity {
                     && e.getVeterinario().getDsEmail().equalsIgnoreCase(authentication.getName());
             boolean isTutorPendente = e.getPet() != null && e.getPet().getTutor() != null
                     && e.getPet().getTutor().getDsEmail().equalsIgnoreCase(authentication.getName())
-                    && e.getDsStatus() == StatusEvento.SOLICITADO;
+                    && e.getDsStatus() == StatusEvento.AGENDADO;
             return isVet || isTutorPendente;
         }).orElse(false);
     }

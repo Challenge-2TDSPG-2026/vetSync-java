@@ -1,8 +1,7 @@
 package br.com.fiap.VetSync.entity;
 
 public enum StatusEvento {
-    SOLICITADO,
-    CONFIRMADO,
+    AGENDADO,
     CONCLUIDO,
     CANCELADO
 }

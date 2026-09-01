@@ -46,7 +46,7 @@ public class EventoSaude {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(name = "ds_status", nullable = false, length = 20)
-    private StatusEvento dsStatus = StatusEvento.SOLICITADO;
+    private StatusEvento dsStatus = StatusEvento.AGENDADO;
 
     @Column(name = "ds_motivo_cancelamento", length = 300)
     private String dsMotivoCancelamento;

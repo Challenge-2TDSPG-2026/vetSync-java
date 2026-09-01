@@ -20,19 +20,21 @@ import java.util.List;
 @RestController
 @RequestMapping("/eventos")
 @RequiredArgsConstructor
-@Tag(name = "Eventos de Saúde", description = "Fluxo solicitado → confirmado → concluído/cancelado entre tutor e veterinário")
+@Tag(name = "Eventos de Saúde", description = "Fluxo agendado → concluído/cancelado. Tutor escolhe um horário livre na agenda do veterinário e o evento já nasce agendado, sem etapa de confirmação.")
 public class EventoController {
 
     private final EventoService eventoService;
     private final PetService petService;
 
-    public record EventoSolicitarRequest(
+    public record EventoAgendarRequest(
             Long idPet, Long idTipoEvento, Long idVeterinario, LocalDate dtEvento, String dsObservacao
     ) {}
 
     public record EventoConcluirRequest(String dsObservacao, BigDecimal vlCusto) {}
 
-    public record EventoCancelarRequest(String motivo) {}
+    public record EventoCancelarRequest(String motivo, LocalDate reagendarPara) {}
+
+    public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
 
     public record EventoResponse(
             Long idEvento,
@@ -69,8 +71,8 @@ public class EventoController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Tutor solicita um evento de saúde para um pet dele, escolhendo o veterinário")
-    public EventoResponse solicitar(Authentication authentication, @RequestBody EventoSolicitarRequest request) {
+    @Operation(summary = "Tutor agenda um evento de saúde para um pet dele, escolhendo veterinário e horário livre na agenda dele")
+    public EventoResponse agendar(Authentication authentication, @RequestBody EventoAgendarRequest request) {
         boolean donoDoPet = petService.buscarPorId(request.idPet()).getTutor().getDsEmail()
                 .equalsIgnoreCase(authentication.getName());
         if (!donoDoPet) {
@@ -80,7 +82,7 @@ public class EventoController {
                 .dtEvento(request.dtEvento())
                 .dsObservacao(request.dsObservacao())
                 .build();
-        return toResponse(eventoService.solicitar(evento, request.idPet(), request.idTipoEvento(), request.idVeterinario()));
+        return toResponse(eventoService.agendar(evento, request.idPet(), request.idTipoEvento(), request.idVeterinario()));
     }
 
     @GetMapping
@@ -99,31 +101,28 @@ public class EventoController {
         return toResponse(eventoService.buscarPorId(id));
     }
 
-    @PatchMapping("/{id}/confirmar")
-    @PreAuthorize("hasRole('VETERINARIO') and @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
-    @Operation(summary = "Veterinário confirma um evento SOLICITADO")
-    public EventoResponse confirmar(@PathVariable Long id) {
-        return toResponse(eventoService.confirmar(id));
-    }
-
     @PatchMapping("/{id}/concluir")
     @PreAuthorize("hasRole('VETERINARIO') and @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
-    @Operation(summary = "Veterinário conclui um evento CONFIRMADO, com observações clínicas e custo final")
+    @Operation(summary = "Veterinário conclui um evento AGENDADO, com observações clínicas e custo final")
     public EventoResponse concluir(@PathVariable Long id, @RequestBody EventoConcluirRequest request) {
         return toResponse(eventoService.concluir(id, request.dsObservacao(), request.vlCusto()));
     }
 
     @PatchMapping("/{id}/cancelar")
-    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
-    @Operation(summary = "Cancelar evento (tutor ou veterinário envolvido), com motivo")
-    public EventoResponse cancelar(@PathVariable Long id, @RequestBody EventoCancelarRequest request) {
-        return toResponse(eventoService.cancelar(id, request.motivo()));
+    @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorDoPet(#id, authentication)")
+    @Operation(summary = "Tutor cancela um evento AGENDADO", description = "Motivo é obrigatório. Veterinário não cancela mais consultas. Se 'reagendarPara' vier preenchido, já cria um novo evento AGENDADO na nova data, no mesmo pet/tipo/veterinário.")
+    public EventoCancelarResponse cancelar(@PathVariable Long id, @RequestBody EventoCancelarRequest request) {
+        EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara());
+        return new EventoCancelarResponse(
+                toResponse(resultado.eventoCancelado()),
+                resultado.novoEvento() != null ? toResponse(resultado.novoEvento()) : null
+        );
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@eventoSecurity.canDelete(#id, authentication)")
-    @Operation(summary = "Remover evento", description = "Veterinário sempre pode; tutor só enquanto o evento ainda está SOLICITADO.")
+    @Operation(summary = "Remover evento", description = "Veterinário sempre pode; tutor só enquanto o evento ainda está AGENDADO.")
     public void deletar(@PathVariable Long id) {
         eventoService.deletar(id);
     }

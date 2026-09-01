@@ -23,6 +23,7 @@ public class EventoService {
     private final PetService petService;
     private final TipoEventoRepository tipoEventoRepository;
     private final VeterinarioRepository veterinarioRepository;
+    private final PontosService pontosService;
 
     private static final long MESES_LIMITE_ATRASO = 12;
 
@@ -31,7 +32,11 @@ public class EventoService {
     ) {}
 
 
-    public EventoSaude solicitar(EventoSaude evento, Long idPet, Long idTipoEvento, Long idVeterinario) {
+    public record ResultadoCancelamento(EventoSaude eventoCancelado, EventoSaude novoEvento) {}
+
+
+
+    public EventoSaude agendar(EventoSaude evento, Long idPet, Long idTipoEvento, Long idVeterinario) {
         Pet pet = petService.buscarPorId(idPet);
         TipoEvento tipoEvento = tipoEventoRepository.findById(idTipoEvento).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
@@ -41,7 +46,7 @@ public class EventoService {
         evento.setPet(pet);
         evento.setTipoEvento(tipoEvento);
         evento.setVeterinario(vet);
-        evento.setDsStatus(StatusEvento.SOLICITADO);
+        evento.setDsStatus(StatusEvento.AGENDADO);
         return eventoSaudeRepository.save(evento);
     }
 
@@ -62,27 +67,25 @@ public class EventoService {
         return eventoSaudeRepository.findByVeterinario_DsEmailOrderByDtEventoDesc(email);
     }
 
-
-    public EventoSaude confirmar(Long id) {
-        EventoSaude evento = buscarPorId(id);
-        exigirStatus(evento, StatusEvento.SOLICITADO, "confirmar");
-        evento.setDsStatus(StatusEvento.CONFIRMADO);
-        return eventoSaudeRepository.save(evento);
-    }
-
     public EventoSaude concluir(Long id, String dsObservacao, BigDecimal vlCusto) {
         EventoSaude evento = buscarPorId(id);
-        exigirStatus(evento, StatusEvento.CONFIRMADO, "concluir");
+        exigirStatus(evento, StatusEvento.AGENDADO, "concluir");
         evento.setDsStatus(StatusEvento.CONCLUIDO);
         if (dsObservacao != null) {
             evento.setDsObservacao(dsObservacao);
         }
         evento.setVlCusto(vlCusto != null ? vlCusto : BigDecimal.ZERO);
-        return eventoSaudeRepository.save(evento);
+        EventoSaude concluido = eventoSaudeRepository.save(evento);
 
+        pontosService.lancarPendente(concluido);
+        return concluido;
     }
 
-    public EventoSaude cancelar(Long id, String motivo) {
+
+    public ResultadoCancelamento cancelar(Long id, String motivo, LocalDate reagendarPara) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo do cancelamento é obrigatório");
+        }
         EventoSaude evento = buscarPorId(id);
         if (evento.getDsStatus() == StatusEvento.CONCLUIDO || evento.getDsStatus() == StatusEvento.CANCELADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -90,7 +93,21 @@ public class EventoService {
         }
         evento.setDsStatus(StatusEvento.CANCELADO);
         evento.setDsMotivoCancelamento(motivo);
-        return eventoSaudeRepository.save(evento);
+        EventoSaude cancelado = eventoSaudeRepository.save(evento);
+
+        EventoSaude novoEvento = null;
+        if (reagendarPara != null) {
+            EventoSaude novo = EventoSaude.builder()
+                    .pet(cancelado.getPet())
+                    .tipoEvento(cancelado.getTipoEvento())
+                    .veterinario(cancelado.getVeterinario())
+                    .dtEvento(reagendarPara)
+                    .dsObservacao("Reagendado do evento #" + cancelado.getIdEvento())
+                    .dsStatus(StatusEvento.AGENDADO)
+                    .build();
+            novoEvento = eventoSaudeRepository.save(novo);
+        }
+        return new ResultadoCancelamento(cancelado, novoEvento);
     }
 
     private void exigirStatus(EventoSaude evento, StatusEvento esperado, String acao) {

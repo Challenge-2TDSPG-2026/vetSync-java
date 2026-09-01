@@ -1,7 +1,6 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.*;
-import br.com.fiap.VetSync.repository.EventoSaudeRepository;
 import br.com.fiap.VetSync.repository.RecompensaRepository;
 import br.com.fiap.VetSync.repository.ResgateRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
@@ -18,9 +17,9 @@ public class RecompensaService {
 
     private final RecompensaRepository recompensaRepository;
     private final ResgateRepository resgateRepository;
-    private final EventoSaudeRepository eventoSaudeRepository;
     private final VeterinarioRepository veterinarioRepository;
     private final TutorService tutorService;
+    private final PontosService pontosService;
 
 
 
@@ -49,11 +48,7 @@ public class RecompensaService {
 
 
     public int calcularSaldo(Long idTutor) {
-        int ganhos = eventoSaudeRepository.findByPet_Tutor_DsEmailOrderByDtEventoDesc(emailDoTutor(idTutor)).stream()
-                .filter(e -> e.getDsStatus() == StatusEvento.CONCLUIDO)
-                .mapToInt(e -> e.getTipoEvento() != null && e.getTipoEvento().getNrPontos() != null
-                        ? e.getTipoEvento().getNrPontos() : 0)
-                .sum();
+        int ganhos = pontosService.calcularPontosLiberados(idTutor);
 
         int gastos = resgateRepository.findByTutor_IdTutorOrderByDtResgateDesc(idTutor).stream()
                 .filter(r -> r.getDsStatus() == StatusResgate.VALIDADO)
@@ -61,10 +56,6 @@ public class RecompensaService {
                 .sum();
 
         return ganhos - gastos;
-    }
-
-    private String emailDoTutor(Long idTutor) {
-        return tutorService.buscarPorId(idTutor).getDsEmail();
     }
 
 

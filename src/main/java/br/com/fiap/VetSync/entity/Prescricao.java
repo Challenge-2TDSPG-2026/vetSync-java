@@ -41,4 +41,13 @@ public class Prescricao {
 
     @Column(name = "qt_doses_dia")
     private Integer qtDosesDia;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "ds_status", nullable = false, length = 20)
+    private StatusPrescricao dsStatus = StatusPrescricao.SOLICITADO;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_admin_validador")
+    private Admin adminValidador;
 }
