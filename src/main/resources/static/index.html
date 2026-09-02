@@ -1,613 +1,517 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>JornadaPet — API Tester</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VetSync — Painel de Testes de API</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        *{box-sizing:border-box;margin:0;padding:0}
         :root{
-            --bg:#0d1117;--surf:#161b22;--surf2:#1c2330;--surf3:#21262d;
-            --bd:#30363d;--bd2:#21262d;
-            --tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;
-            --green:#3fb950;--green2:#238636;--green-dim:rgba(63,185,80,.12);
-            --red:#f85149;--red-dim:rgba(248,81,73,.12);
-            --blue:#58a6ff;--blue-dim:rgba(88,166,255,.12);
-            --yellow:#d29922;--yellow-dim:rgba(210,153,34,.12);
-            --purple:#bc8cff;--purple-dim:rgba(188,140,255,.12);
-            --r:8px;--r2:12px;
-            --font:'Sora',sans-serif;--mono:'DM Mono',monospace;
+            --pine-900:#12271F;
+            --pine-800:#1A362B;
+            --pine-700:#264438;
+            --cream:#F6F4EE;
+            --cream-dim:#EAE6D9;
+            --paper:#FBFAF6;
+            --ink:#1B211D;
+            --ink-dim:#5D655D;
+            --amber:#E29A3C;
+            --amber-dark:#B87A22;
+            --blue:#3E7A8C;
+            --violet:#7A6BA6;
+            --red:#B4483F;
+            --green:#3E8C5A;
+            --grey:#8A8F86;
+            --line:#DCD7C8;
+            --radius:6px;
         }
-        body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh}
-        #app{display:flex;height:100vh;overflow:hidden}
+        *{box-sizing:border-box;}
+        html,body{margin:0;height:100%;}
+        body{
+            background:var(--paper);
+            color:var(--ink);
+            font-family:'Space Grotesk',system-ui,sans-serif;
+            display:flex;
+            flex-direction:column;
+            min-height:100vh;
+        }
+        code, .mono, input, textarea, pre{ font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace; }
 
-        /* SIDEBAR */
-        #sidebar{width:230px;background:var(--surf);border-right:1px solid var(--bd2);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
-        .sb-logo{padding:20px 16px 14px;border-bottom:1px solid var(--bd2)}
-        .sb-logo h1{font-size:16px;font-weight:600;color:var(--green);letter-spacing:-.3px}
-        .sb-logo p{font-size:11px;color:var(--tx3);margin-top:2px;font-family:var(--mono)}
-        .sb-base{padding:12px 10px 6px}
-        .sb-base label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;padding:0 6px;display:block;margin-bottom:4px}
-        .sb-base input{width:100%;background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:7px 10px;color:var(--tx);font-family:var(--mono);font-size:12px;outline:none}
-        .sb-base input:focus{border-color:var(--green)}
-        .sb-section{padding:8px 10px 4px}
-        .sb-section span{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;padding:0 6px;display:block;margin-bottom:2px}
-        .sb-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:none;background:transparent;color:var(--tx2);font-family:var(--font);font-size:13px;border-radius:var(--r);cursor:pointer;text-align:left;transition:all .15s}
-        .sb-btn:hover{background:var(--surf3);color:var(--tx)}
-        .sb-btn .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;opacity:.7}
-        .sb-btn.method-get .dot{background:var(--blue)}
-        .sb-btn.method-post .dot{background:var(--green)}
-        .sb-btn.method-put .dot{background:var(--yellow)}
-        .sb-btn.method-patch .dot{background:var(--purple)}
-        .sb-btn.method-delete .dot{background:var(--red)}
-        .sb-btn.active.method-get{background:var(--blue-dim);color:var(--blue)}
-        .sb-btn.active.method-post{background:var(--green-dim);color:var(--green)}
-        .sb-btn.active.method-put{background:var(--yellow-dim);color:var(--yellow)}
-        .sb-btn.active.method-patch{background:var(--purple-dim);color:var(--purple)}
-        .sb-btn.active.method-delete{background:var(--red-dim);color:var(--red)}
-        .sb-divider{height:1px;background:var(--bd2);margin:6px 10px}
-        .sb-token{padding:10px 16px 16px;border-top:1px solid var(--bd2);margin-top:auto}
-        .sb-token label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px}
-        .token-box{background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--green);word-break:break-all;max-height:52px;overflow:hidden;cursor:pointer}
-        .token-box.empty{color:var(--tx3);font-style:italic}
-        .token-clear{margin-top:6px;font-size:11px;color:var(--red);cursor:pointer;background:none;border:none;padding:0;font-family:var(--font)}
-        .token-clear:hover{text-decoration:underline}
+        header{
+            background:var(--pine-900);
+            color:var(--cream);
+            padding:20px 28px 18px;
+            border-bottom:3px solid var(--amber);
+        }
+        header h1{ margin:0 0 2px; font-size:21px; font-weight:700; letter-spacing:-0.01em; }
+        header p{ margin:0 0 14px; color:#B9C4BB; font-size:13px; }
+        .config-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+        .field{ display:flex; flex-direction:column; }
+        .field label{ font-size:11.5px; color:#B9C4BB; margin-bottom:4px; }
+        .config-row input{
+            background:var(--pine-700); border:1px solid #3A5344; color:var(--cream);
+            padding:8px 10px; border-radius:var(--radius); font-size:13px; min-width:210px;
+        }
+        #tokenField{ min-width:300px; }
+        .config-row input::placeholder{ color:#7E9186; }
+        .config-row input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+        button{
+            font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px;
+            border:none; border-radius:var(--radius); padding:9px 16px; cursor:pointer;
+            transition:transform .08s ease, filter .12s ease;
+        }
+        button:active{ transform:translateY(1px); }
+        .btn-amber{ background:var(--amber); color:#241804; }
+        .btn-amber:hover{ filter:brightness(1.08); }
+        #statusBadge{ font-size:12px; padding:8px 10px; border-radius:999px; background:var(--pine-700); color:#B9C4BB; }
+        #statusBadge.ok{ background:#204F35; color:#B9E8C6; }
+        #statusBadge.err{ background:#5A2A26; color:#F0C0BA; }
 
-        /* MAIN */
-        #main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
-        #topbar{padding:14px 22px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:12px;background:var(--surf);flex-shrink:0;flex-wrap:wrap;gap:10px}
-        .method-badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;flex-shrink:0}
-        .badge-get{background:var(--blue-dim);color:var(--blue)}
-        .badge-post{background:var(--green-dim);color:var(--green)}
-        .badge-put{background:var(--yellow-dim);color:var(--yellow)}
-        .badge-patch{background:var(--purple-dim);color:var(--purple)}
-        .badge-delete{background:var(--red-dim);color:var(--red)}
-        .tb-info{flex:1;min-width:0}
-        .tb-info .ep-title{font-size:14px;font-weight:500;color:var(--tx)}
-        .tb-info .ep-desc{font-size:12px;color:var(--tx3);margin-top:2px}
-        #send-btn{padding:8px 18px;background:var(--green2);border:none;border-radius:var(--r);color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;flex-shrink:0}
-        #send-btn:hover{background:var(--green)}
-        #send-btn:disabled{opacity:.4;cursor:not-allowed}
+        /* profile tabs */
+        .tabs{ display:flex; gap:6px; padding:0 28px; background:var(--pine-800); }
+        .tab{
+            padding:10px 16px; font-size:13px; font-weight:600; color:#9FB0A6;
+            cursor:pointer; border-bottom:3px solid transparent; user-select:none;
+        }
+        .tab:hover{ color:var(--cream); }
+        .tab.active{ color:var(--cream); border-bottom-color:var(--amber); }
+        .tab .count{ font-size:11px; color:#7E9186; margin-left:4px; }
+        .tab.active .count{ color:#D8CBA8; }
 
-        #content{flex:1;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
-        .panel{display:flex;flex-direction:column;overflow:hidden;min-width:0}
-        .panel:first-child{border-right:1px solid var(--bd2)}
-        .panel-header{padding:10px 20px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:8px;flex-shrink:0}
-        .panel-header .ph-label{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px}
-        .status-chip{margin-left:auto;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px}
-        .status-ok{background:var(--green-dim);color:var(--green)}
-        .status-err{background:var(--red-dim);color:var(--red)}
-        .status-pending{background:var(--surf3);color:var(--tx3)}
-        .panel-body{flex:1;overflow-y:auto;padding:16px 20px}
+        .layout{ flex:1; display:flex; min-height:0; }
+        aside{ width:340px; flex-shrink:0; background:var(--cream); border-right:1px solid var(--line); overflow-y:auto; padding:10px 0 40px; }
+        .section-note{ padding:12px 16px; font-size:12px; color:var(--ink-dim); line-height:1.5; border-bottom:1px solid var(--line); margin-bottom:6px; }
+        .group-title{ font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--ink-dim); padding:12px 16px 5px; }
+        .ep-item{ display:block; padding:8px 16px; cursor:pointer; border-left:3px solid transparent; }
+        .ep-item:hover{ background:var(--cream-dim); }
+        .ep-item.active{ background:var(--cream-dim); border-left-color:var(--amber); }
+        .ep-item .row{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+        .ep-item .path{ font-size:12px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ep-item .title{ font-size:11.5px; color:var(--ink-dim); padding-left:2px; }
+        .method-tag{ font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; color:#fff; flex-shrink:0; letter-spacing:.02em; }
+        .m-GET{ background:var(--blue); } .m-POST{ background:var(--amber-dark); }
+        .m-PUT, .m-PATCH{ background:var(--violet); } .m-DELETE{ background:var(--red); }
 
-        /* FORM */
-        .field-group{margin-bottom:13px}
-        .field-group label{display:block;font-size:11px;color:var(--tx2);margin-bottom:5px;font-weight:500}
-        .req{color:var(--red);margin-left:2px}
-        .opt{color:var(--tx3);margin-left:4px;font-weight:400;font-size:10px}
-        .field-group input,.field-group select,.field-group textarea{width:100%;background:var(--surf3);border:1px solid var(--bd);border-radius:var(--r);padding:8px 11px;color:var(--tx);font-family:var(--font);font-size:13px;outline:none;transition:border .15s}
-        .field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--green)}
-        .field-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
-        .field-group select option{background:var(--surf2)}
-        .field-group textarea{resize:vertical;min-height:70px;font-family:var(--mono);font-size:12px;line-height:1.5}
-        .checkbox-row{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0}
-        .checkbox-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--green);cursor:pointer}
-        .checkbox-row span{font-size:13px;color:var(--tx)}
-        .section-title{font-size:10px;color:var(--tx3);font-weight:500;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)}
-        .section-gap{margin-top:18px}
+        .profile-pill{ font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:999px; color:#fff; letter-spacing:.02em; }
+        .p-TUTOR{ background:var(--amber-dark); } .p-VETERINARIO{ background:var(--blue); }
+        .p-ADMIN{ background:var(--violet); } .p-GERAL{ background:var(--grey); }
 
-        /* RESPONSE */
-        #response-area{font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-all}
-        #response-area.empty{color:var(--tx3);font-style:italic;font-family:var(--font);font-size:13px;line-height:1.6}
-        .response-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd2)}
-        .response-meta span{font-size:11px;color:var(--tx3);font-family:var(--mono)}
-        .response-meta strong{color:var(--tx2)}
-        .j-key{color:#79c0ff}.j-str{color:#a5d6ff}.j-num{color:#f2cc60}.j-bool{color:#ff7b72}.j-null{color:#8b949e}
+        main{ flex:1; overflow-y:auto; padding:26px 34px 60px; }
+        .placeholder{ max-width:520px; margin-top:40px; color:var(--ink-dim); font-size:14px; line-height:1.6; }
+        .placeholder h2{ color:var(--ink); font-size:19px; margin-bottom:6px; }
 
-        /* WELCOME */
-        #welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--tx3);padding:40px;text-align:center}
-        #welcome h2{font-size:18px;font-weight:500;color:var(--tx2)}
-        #welcome p{font-size:13px;max-width:340px;line-height:1.7}
-        .hint-list{list-style:none;font-size:12px;color:var(--tx3);line-height:2;margin-top:4px}
-        .hint-list li::before{content:'→ ';color:var(--green)}
+        .op-header{ margin-bottom:20px; }
+        .op-header .row1{ display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+        .op-header .method-tag{ font-size:12px; padding:4px 9px; }
+        .op-header .path{ font-size:16px; font-weight:600; }
+        .op-header .title{ font-size:15px; font-weight:600; margin:0 0 4px; }
+        .op-header .description{ color:var(--ink-dim); font-size:13.5px; line-height:1.55; max-width:640px; }
+        .profile-badges{ display:flex; gap:6px; margin-top:8px; }
 
-        /* MISC */
-        ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
-        ::-webkit-scrollbar-thumb:hover{background:var(--bd)}
-        .tag{display:inline-flex;align-items:center;font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:4px;margin-left:4px}
-        .tag-auth{background:var(--yellow-dim);color:var(--yellow)}
-        .tag-page{background:var(--purple-dim);color:var(--purple)}
-        .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .copy-btn{background:var(--surf3);border:1px solid var(--bd);border-radius:6px;color:var(--tx2);font-size:11px;padding:3px 8px;cursor:pointer;font-family:var(--font)}
-        .copy-btn:hover{border-color:var(--green);color:var(--green)}
-        .no-params{color:var(--tx3);font-size:13px;line-height:1.6}
+        section.block{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:16px; }
+        section.block h3{ margin:0 0 12px; font-size:12px; font-weight:700; letter-spacing:.03em; color:var(--ink-dim); }
+        .param-row{ display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+        .param-row label{ width:190px; flex-shrink:0; font-size:12.5px; padding-top:8px; line-height:1.4; }
+        .param-row label .note{ display:block; font-size:11px; color:var(--ink-dim); font-weight:400; margin-top:1px; }
+        .param-row .req{ color:var(--red); }
+        .param-row input{ flex:1; padding:7px 9px; border:1px solid var(--line); border-radius:var(--radius); font-size:13px; background:#fff; }
+
+        textarea#bodyEditor{
+            width:100%; min-height:170px; padding:11px 12px; border:1px solid var(--line);
+            border-radius:var(--radius); font-size:12.5px; line-height:1.55; background:#fff; resize:vertical;
+        }
+        .body-fields-note{ font-size:12px; color:var(--ink-dim); margin-bottom:10px; line-height:1.5; }
+
+        .send-row{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+        .resp-status{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; padding:6px 12px; border-radius:var(--radius); margin-bottom:10px; }
+        .resp-status.s2{ background:#E4F3E8; color:var(--green); }
+        .resp-status.s4, .resp-status.s5{ background:#F7E4E1; color:var(--red); }
+        .resp-status.s0{ background:var(--cream-dim); color:var(--ink-dim); }
+        pre#respBody{ background:var(--pine-900); color:#D9E4DB; padding:14px 16px; border-radius:var(--radius); font-size:12px; line-height:1.55; overflow-x:auto; max-height:400px; }
+        .use-token-btn{ margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--ink); }
+        .cors-note{ background:#FBF1DF; border:1px solid #E9CE99; color:#6B4E14; padding:10px 14px; border-radius:var(--radius); font-size:12.5px; margin-bottom:18px; line-height:1.55; }
     </style>
 </head>
 <body>
-<div id="app">
 
-    <!-- SIDEBAR -->
-    <div id="sidebar">
-        <div class="sb-logo">
-            <h1>🐾 JornadaPet</h1>
-            <p>API Tester · FIAP 2026</p>
-        </div>
-
-        <div class="sb-base">
-            <label>Base URL</label>
-            <input id="base-url" value="http://localhost:8080" placeholder="http://localhost:8080"/>
-        </div>
-
-        <div class="sb-section"><span>Auth</span></div>
-        <button class="sb-btn method-post" data-ep="register" onclick="selectEndpoint(this,'register')"><span class="dot"></span>Register</button>
-        <button class="sb-btn method-post" data-ep="login" onclick="selectEndpoint(this,'login')"><span class="dot"></span>Login</button>
-
-        <div class="sb-divider"></div>
-        <div class="sb-section"><span>Tutores</span></div>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'tutores-list')"><span class="dot"></span>Listar Tutores</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'tutores-get')"><span class="dot"></span>Buscar por ID</button>
-        <button class="sb-btn method-post" onclick="selectEndpoint(this,'tutores-post')"><span class="dot"></span>Cadastrar Tutor</button>
-        <button class="sb-btn method-put" onclick="selectEndpoint(this,'tutores-put')"><span class="dot"></span>Atualizar Tutor</button>
-        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'tutores-delete')"><span class="dot"></span>Deletar Tutor</button>
-
-        <div class="sb-divider"></div>
-        <div class="sb-section"><span>Pets</span></div>
-        <button class="sb-btn method-post" onclick="selectEndpoint(this,'pets-post')"><span class="dot"></span>Cadastrar Pet</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-get')"><span class="dot"></span>Buscar por ID</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-by-tutor')"><span class="dot"></span>Pets do Tutor</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'pets-by-especie')"><span class="dot"></span>Por Espécie</button>
-        <button class="sb-btn method-put" onclick="selectEndpoint(this,'pets-put')"><span class="dot"></span>Atualizar Pet</button>
-        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'pets-delete')"><span class="dot"></span>Deletar Pet</button>
-
-        <div class="sb-divider"></div>
-        <div class="sb-section"><span>Eventos de Saúde</span></div>
-        <button class="sb-btn method-post" onclick="selectEndpoint(this,'eventos-post')"><span class="dot"></span>Registrar Evento</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-list')"><span class="dot"></span>Listar Eventos</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-pendentes')"><span class="dot"></span>Pendentes</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-atrasados')"><span class="dot"></span>Atrasados</button>
-        <button class="sb-btn method-get" onclick="selectEndpoint(this,'eventos-get')"><span class="dot"></span>Buscar por ID</button>
-        <button class="sb-btn method-patch" onclick="selectEndpoint(this,'eventos-realizado')"><span class="dot"></span>Marcar Realizado</button>
-        <button class="sb-btn method-put" onclick="selectEndpoint(this,'eventos-put')"><span class="dot"></span>Atualizar Evento</button>
-        <button class="sb-btn method-delete" onclick="selectEndpoint(this,'eventos-delete')"><span class="dot"></span>Deletar Evento</button>
-
-        <div class="sb-token">
-            <label>JWT Token</label>
-            <div class="token-box empty" id="token-display" title="Clique para copiar" onclick="copyToken()">Faça login para obter token</div>
-            <button class="token-clear" id="token-clear" style="display:none" onclick="clearToken()">✕ Limpar token</button>
-        </div>
+<header>
+    <h1>VetSync — Painel de Testes de API</h1>
+    <p>Endpoints reais do backend, organizados por quem os usa: Tutor, Veterinário ou Admin.</p>
+    <div class="config-row">
+        <div class="field"><label for="baseUrl">URL base</label><input id="baseUrl" value="http://localhost:8080" /></div>
+        <div class="field"><label for="tokenField">Bearer token (após login)</label><input id="tokenField" placeholder="cole aqui o token" /></div>
+        <span id="statusBadge">pronto</span>
     </div>
+</header>
 
-    <!-- MAIN -->
-    <div id="main">
-        <div id="welcome">
-            <div style="font-size:42px">🐾</div>
-            <h2>JornadaPet API Tester</h2>
-            <p>Selecione um endpoint no menu lateral para começar a testar.</p>
-            <ul class="hint-list">
-                <li>Faça <strong>Register</strong> ou <strong>Login</strong> primeiro</li>
-                <li>O JWT é salvo e enviado automaticamente</li>
-                <li><kbd style="background:var(--surf3);padding:2px 6px;border-radius:4px;font-size:11px">Ctrl+Enter</kbd> envia a requisição</li>
-            </ul>
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+        <div class="placeholder">
+            <h2>Nenhum endpoint selecionado</h2>
+            <p>Escolha um perfil na barra acima e clique em um endpoint à esquerda para ver a descrição completa e montar o teste.</p>
         </div>
-
-        <div id="request-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-            <div id="topbar">
-                <span class="method-badge" id="tb-method">GET</span>
-                <div class="tb-info">
-                    <div class="ep-title" id="tb-title">Endpoint</div>
-                    <div class="ep-desc" id="tb-desc"></div>
-                </div>
-                <button id="send-btn" onclick="sendRequest()">▶ Enviar</button>
-            </div>
-
-            <div id="content">
-                <div class="panel">
-                    <div class="panel-header"><span class="ph-label">Parâmetros & Body</span></div>
-                    <div class="panel-body" id="params-panel"></div>
-                </div>
-                <div class="panel">
-                    <div class="panel-header">
-                        <span class="ph-label">Resposta</span>
-                        <span class="status-chip status-pending" id="status-chip">aguardando</span>
-                        <button class="copy-btn" style="margin-left:8px" onclick="copyResponse()">copiar</button>
-                    </div>
-                    <div class="panel-body">
-                        <div id="response-area" class="empty">A resposta aparecerá aqui após enviar.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    </main>
 </div>
 
 <script>
-    let token = localStorage.getItem('jornada_jwt') || '';
-    let currentEpKey = null;
-    let lastResponseText = '';
-    let activeBtn = null;
+    // ---------------------------------------------------------------------
+    // Catálogo de endpoints, extraído diretamente dos controllers do VetSync
+    // (métodos, @PreAuthorize e records de request), com descrições em pt-BR.
+    // ---------------------------------------------------------------------
+    const PROFILES = [
+        { key: 'GERAL',       label: 'Geral & Autenticação' },
+        { key: 'TUTOR',       label: 'Tutor' },
+        { key: 'VETERINARIO', label: 'Veterinário' },
+        { key: 'ADMIN',       label: 'Admin' },
+    ];
 
-    if (token) updateTokenDisplay();
+    const ENDPOINTS = [
+        // ---- Autenticação / bootstrap ----
+        { method:'POST', path:'/admins/bootstrap', profiles:['GERAL'], title:'Criar o primeiro admin do sistema',
+            description:'Endpoint público, mas só funciona se ainda não existir nenhum admin cadastrado e a chave enviada bater com ADMIN_BOOTSTRAP_KEY do ambiente. Depois do primeiro admin criado, essa rota sempre retorna 409 (conflito).',
+            body:[{name:'nome',type:'string',required:true},{name:'email',type:'string',required:true},{name:'chave',type:'string',required:true,note:'deve bater com ADMIN_BOOTSTRAP_KEY'}] },
+        { method:'POST', path:'/auth/login', profiles:['GERAL'], title:'Login',
+            description:'E-mail e senha. Funciona para os três perfis (tutor, veterinário ou admin) — o sistema identifica o perfil automaticamente pelo e-mail cadastrado e devolve o token JWT junto com o perfil.',
+            body:[{name:'email',type:'string',required:true},{name:'senha',type:'string',required:true}] },
+        { method:'POST', path:'/auth/registrar', profiles:['GERAL'], title:'Cadastrar novo tutor',
+            description:'Registro público, mas só cria contas de TUTOR. Contas de veterinário são criadas pelo admin em POST /veterinarios; contas de admin são criadas via bootstrap ou por outro admin.',
+            body:[{name:'nome',type:'string',required:true},{name:'email',type:'string',required:true},{name:'senha',type:'string',required:true,note:'mínimo 6 caracteres'},{name:'cpf',type:'string',required:false},{name:'telefone',type:'string',required:false}] },
+        { method:'POST', path:'/auth/logout', profiles:['GERAL'], title:'Sair (invalidar token)',
+            description:'Coloca o token atual (enviado no header Authorization) numa lista negra, invalidando-o imediatamente. Requer estar autenticado.' },
+        { method:'GET', path:'/auth/me', profiles:['GERAL'], title:'Dados do usuário logado',
+            description:'Retorna id, e-mail, nome e perfil de quem está autenticado com o token atual. Útil para restaurar a sessão ao reabrir o app.' },
 
-    const EP = {
-        register:{method:'POST',path:'/auth/register',title:'Registrar Tutor',desc:'Cria conta e retorna JWT',auth:false,
-            fields:[
-                {id:'nome',label:'Nome',type:'text',req:true,ph:'Maria Silva'},
-                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
-                {id:'senha',label:'Senha',type:'password',req:true,ph:'••••••••'},
-                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990001'},
-                {id:'cpf',label:'CPF',type:'text',req:false,ph:'111.111.111-11'},
-            ],
-            body:v=>({nome:v.nome,email:v.email,senha:v.senha,telefone:v.telefone||null,cpf:v.cpf||null})
-        },
-        login:{method:'POST',path:'/auth/login',title:'Login',desc:'Autentica e retorna JWT token',auth:false,
-            fields:[
-                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
-                {id:'senha',label:'Senha',type:'password',req:true,ph:'••••••••'},
-            ],
-            body:v=>({email:v.email,senha:v.senha})
-        },
-        'tutores-list':{method:'GET',path:'/tutores',title:'Listar Tutores',desc:'Retorna todos os tutores cadastrados',auth:true,fields:[]},
-        'tutores-get':{method:'GET',path:'/tutores/{id}',title:'Buscar Tutor por ID',desc:'',auth:true,
-            fields:[{id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'}],
-            pp:['id']
-        },
-        'tutores-post':{method:'POST',path:'/tutores',title:'Cadastrar Tutor',desc:'Cria tutor sem senha',auth:true,
-            fields:[
-                {id:'nome',label:'Nome',type:'text',req:true,ph:'João Souza'},
-                {id:'email',label:'Email',type:'email',req:true,ph:'joao@email.com'},
-                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990002'},
-                {id:'cpf',label:'CPF',type:'text',req:false,ph:'222.222.222-22'},
-            ],
-            body:v=>({nome:v.nome,email:v.email,telefone:v.telefone||null,cpf:v.cpf||null})
-        },
-        'tutores-put':{method:'PUT',path:'/tutores/{id}',title:'Atualizar Tutor',desc:'',auth:true,
-            fields:[
-                {id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'},
-                {id:'nome',label:'Nome',type:'text',req:true,ph:'Maria Silva'},
-                {id:'email',label:'Email',type:'email',req:true,ph:'maria@email.com'},
-                {id:'telefone',label:'Telefone',type:'text',req:false,ph:'11999990001'},
-                {id:'cpf',label:'CPF',type:'text',req:false,ph:'111.111.111-11'},
-            ],
-            pp:['id'],
-            body:v=>({nome:v.nome,email:v.email,telefone:v.telefone||null,cpf:v.cpf||null})
-        },
-        'tutores-delete':{method:'DELETE',path:'/tutores/{id}',title:'Deletar Tutor',desc:'Retorna 204 No Content',auth:true,
-            fields:[{id:'id',label:'ID do Tutor',type:'number',req:true,ph:'1'}],
-            pp:['id']
-        },
-        'pets-post':{method:'POST',path:'/pets/tutor/{tutorId}',title:'Cadastrar Pet',desc:'Eventos iniciais sugeridos automaticamente pelo serviço',auth:true,
-            fields:[
-                {id:'tutorId',label:'ID do Tutor',type:'number',req:true,ph:'1'},
-                {id:'nome',label:'Nome do Pet',type:'text',req:true,ph:'Buddy'},
-                {id:'especie',label:'Espécie',type:'text',req:true,ph:'cão'},
-                {id:'raca',label:'Raça',type:'text',req:false,ph:'Golden Retriever'},
-                {id:'peso',label:'Peso (kg)',type:'number',req:false,ph:'5.0'},
-                {id:'dataNascimento',label:'Data de Nascimento',type:'date',req:true,ph:''},
-                {id:'sexo',label:'Sexo',type:'select',options:['M','F'],req:false},
-                {id:'castrado',label:'Castrado',type:'checkbox'},
-                {id:'observacoes',label:'Observações',type:'textarea',req:false,ph:'Filhote muito ativo'},
-            ],
-            pp:['tutorId'],
-            body:v=>({nome:v.nome,especie:v.especie,raca:v.raca||null,peso:v.peso?parseFloat(v.peso):null,dataNascimento:v.dataNascimento||null,sexo:v.sexo||null,castrado:!!v.castrado,observacoes:v.observacoes||null})
-        },
-        'pets-get':{method:'GET',path:'/pets/{id}',title:'Buscar Pet por ID',desc:'Retorna idade calculada automaticamente',auth:true,
-            fields:[{id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'}],
-            pp:['id']
-        },
-        'pets-by-tutor':{method:'GET',path:'/pets/tutor/{tutorId}',title:'Pets do Tutor',desc:'Paginável',auth:true,
-            fields:[
-                {id:'tutorId',label:'ID do Tutor',type:'number',req:true,ph:'1'},
-                {id:'page',label:'Página',type:'number',req:false,ph:'0'},
-                {id:'size',label:'Tamanho',type:'number',req:false,ph:'10'},
-                {id:'sort',label:'Ordenar por',type:'text',req:false,ph:'nome'},
-            ],
-            pp:['tutorId'],qp:['page','size','sort']
-        },
-        'pets-by-especie':{method:'GET',path:'/pets',title:'Pets por Espécie',desc:'Padrão: cão',auth:true,
-            fields:[{id:'especie',label:'Espécie',type:'text',req:false,ph:'gato'}],
-            qp:['especie']
-        },
-        'pets-put':{method:'PUT',path:'/pets/{id}',title:'Atualizar Pet',desc:'Atualiza nome, peso, raça, castrado e observações',auth:true,
-            fields:[
-                {id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'nome',label:'Nome',type:'text',req:true,ph:'Buddy'},
-                {id:'raca',label:'Raça',type:'text',req:false,ph:'Golden Retriever'},
-                {id:'peso',label:'Peso (kg)',type:'number',req:false,ph:'6.0'},
-                {id:'castrado',label:'Castrado',type:'checkbox'},
-                {id:'observacoes',label:'Observações',type:'textarea',req:false,ph:'Observações atualizadas'},
-            ],
-            pp:['id'],
-            body:v=>({nome:v.nome,raca:v.raca||null,peso:v.peso?parseFloat(v.peso):null,castrado:!!v.castrado,observacoes:v.observacoes||null})
-        },
-        'pets-delete':{method:'DELETE',path:'/pets/{id}',title:'Deletar Pet',desc:'Retorna 204 No Content',auth:true,
-            fields:[{id:'id',label:'ID do Pet',type:'number',req:true,ph:'1'}],
-            pp:['id']
-        },
-        'eventos-post':{method:'POST',path:'/pets/{petId}/eventos',title:'Registrar Evento de Saúde',desc:'Tipos: VACINA, VERMIFUGO, BANHO, TOSA, CHECKUP, CONSULTA, CIRURGIA, MEDICAMENTO',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'tipo',label:'Tipo',type:'select',options:['VACINA','VERMIFUGO','BANHO','TOSA','CHECKUP','CONSULTA','CIRURGIA','MEDICAMENTO'],req:true},
-                {id:'descricao',label:'Descrição',type:'textarea',req:false,ph:'Vacina antirrábica anual'},
-                {id:'dataRealizacao',label:'Data Realização',type:'date',req:false},
-                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
-            ],
-            pp:['petId'],
-            body:v=>({tipo:v.tipo,descricao:v.descricao||null,dataRealizacao:v.dataRealizacao||null,dataProxima:v.dataProxima||null})
-        },
-        'eventos-list':{method:'GET',path:'/pets/{petId}/eventos',title:'Listar Eventos do Pet',desc:'Ordenação padrão: dataProxima',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'page',label:'Página',type:'number',req:false,ph:'0'},
-                {id:'size',label:'Tamanho',type:'number',req:false,ph:'10'},
-                {id:'sort',label:'Ordenar por',type:'text',req:false,ph:'dataProxima'},
-            ],
-            pp:['petId'],qp:['page','size','sort']
-        },
-        'eventos-pendentes':{method:'GET',path:'/pets/{petId}/eventos/pendentes',title:'Eventos Pendentes',desc:'Status atualizado para ATRASADO automaticamente se data passou',auth:true,
-            fields:[{id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'}],
-            pp:['petId']
-        },
-        'eventos-atrasados':{method:'GET',path:'/pets/{petId}/eventos/atrasados',title:'Eventos Atrasados',desc:'dataProxima no passado e não realizados',auth:true,
-            fields:[{id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'}],
-            pp:['petId']
-        },
-        'eventos-get':{method:'GET',path:'/pets/{petId}/eventos/{id}',title:'Buscar Evento por ID',desc:'',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
-            ],
-            pp:['petId','id']
-        },
-        'eventos-realizado':{method:'PATCH',path:'/pets/{petId}/eventos/{id}/realizado',title:'Marcar como Realizado',desc:'Define status=REALIZADO, dataRealizacao=hoje e agenda próxima data',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
-                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
-            ],
-            pp:['petId','id'],
-            body:v=>({dataProxima:v.dataProxima||null})
-        },
-        'eventos-put':{method:'PUT',path:'/pets/{petId}/eventos/{id}',title:'Atualizar Evento',desc:'',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
-                {id:'tipo',label:'Tipo',type:'select',options:['VACINA','VERMIFUGO','BANHO','TOSA','CHECKUP','CONSULTA','CIRURGIA','MEDICAMENTO'],req:true},
-                {id:'descricao',label:'Descrição',type:'textarea',req:false,ph:'Descrição atualizada'},
-                {id:'dataRealizacao',label:'Data Realização',type:'date',req:false},
-                {id:'dataProxima',label:'Próxima Data',type:'date',req:false},
-            ],
-            pp:['petId','id'],
-            body:v=>({tipo:v.tipo,descricao:v.descricao||null,dataRealizacao:v.dataRealizacao||null,dataProxima:v.dataProxima||null})
-        },
-        'eventos-delete':{method:'DELETE',path:'/pets/{petId}/eventos/{id}',title:'Deletar Evento',desc:'Retorna 204 No Content',auth:true,
-            fields:[
-                {id:'petId',label:'ID do Pet',type:'number',req:true,ph:'1'},
-                {id:'id',label:'ID do Evento',type:'number',req:true,ph:'1'},
-            ],
-            pp:['petId','id']
-        },
+        // ---- Eventos de Saúde ----
+        { method:'POST', path:'/eventos', profiles:['TUTOR'], title:'Agendar evento de saúde',
+            description:'O tutor escolhe um pet, tipo de evento, veterinário e data. O evento já nasce com status AGENDADO — não existe etapa de confirmação separada.',
+            body:[{name:'idPet',type:'number',required:true},{name:'idTipoEvento',type:'number',required:true},{name:'idVeterinario',type:'number',required:true},{name:'dtEvento',type:'date',required:true},{name:'dsObservacao',type:'string',required:false}] },
+        { method:'GET', path:'/eventos', profiles:['TUTOR','VETERINARIO'], title:'Listar eventos',
+            description:'Tutor vê os eventos dos próprios pets. Veterinário vê os eventos atribuídos a ele. O resultado muda automaticamente conforme o perfil do token usado.' },
+        { method:'GET', path:'/eventos/{id}', profiles:['TUTOR','VETERINARIO'], title:'Buscar evento por ID',
+            description:'Só o tutor dono do pet ou o veterinário responsável pelo evento têm acesso.',
+            pathParams:[{name:'id',note:'id do evento'}] },
+        { method:'PATCH', path:'/eventos/{id}/concluir', profiles:['VETERINARIO'], title:'Concluir evento',
+            description:'O veterinário responsável marca um evento AGENDADO como concluído, registrando observações clínicas e o custo final da consulta/procedimento.',
+            pathParams:[{name:'id',note:'id do evento, precisa estar AGENDADO'}],
+            body:[{name:'dsObservacao',type:'string',required:false},{name:'vlCusto',type:'number',required:false,note:'não pode ser negativo'}] },
+        { method:'PATCH', path:'/eventos/{id}/cancelar', profiles:['TUTOR'], title:'Cancelar evento',
+            description:'O tutor cancela um evento AGENDADO. O motivo é obrigatório. Se "reagendarPara" vier preenchido, um novo evento AGENDADO já é criado automaticamente na nova data, com o mesmo pet/tipo/veterinário. Veterinário não cancela mais consultas.',
+            pathParams:[{name:'id',note:'id do evento, precisa estar AGENDADO'}],
+            body:[{name:'motivo',type:'string',required:true},{name:'reagendarPara',type:'date',required:false,note:'data futura, opcional'}] },
+        { method:'DELETE', path:'/eventos/{id}', profiles:['TUTOR','VETERINARIO'], title:'Remover evento',
+            description:'Veterinário sempre pode remover. Tutor só pode remover enquanto o evento ainda está AGENDADO.',
+            pathParams:[{name:'id',note:'id do evento'}] },
+        { method:'GET', path:'/eventos/pet/{idPet}/gasto-total', profiles:['GERAL'], title:'Gasto total do pet',
+            description:'Soma o custo de todos os eventos CONCLUÍDOS de um pet. Acessível a qualquer usuário autenticado (sem restrição de perfil no código atual).',
+            pathParams:[{name:'idPet',note:'id do pet'}] },
+        { method:'GET', path:'/eventos/pet/{idPet}/alertas', profiles:['GERAL'], title:'Alertas de atraso do pet',
+            description:'Histórico e alerta de atraso por tipo de evento (vacina, banho etc.), considerando só eventos CONCLUÍDOS. Acessível a qualquer usuário autenticado.',
+            pathParams:[{name:'idPet',note:'id do pet'}] },
+
+        // ---- Medicamentos ----
+        { method:'POST', path:'/medicamentos', profiles:['VETERINARIO','ADMIN'], title:'Cadastrar medicamento',
+            description:'Adiciona um medicamento ao catálogo usado nas prescrições.',
+            body:[{name:'nmMedicamento',type:'string',required:true},{name:'dsPrincipio',type:'string',required:false},{name:'vlPrecoRef',type:'number',required:false}] },
+        { method:'GET', path:'/medicamentos', profiles:['GERAL'], title:'Listar catálogo de medicamentos',
+            description:'Lista todos os medicamentos cadastrados. Acessível a qualquer usuário autenticado.' },
+        { method:'GET', path:'/medicamentos/{id}', profiles:['GERAL'], title:'Buscar medicamento por ID',
+            description:'Detalhe de um medicamento do catálogo.', pathParams:[{name:'id'}] },
+        { method:'PUT', path:'/medicamentos/{id}', profiles:['VETERINARIO','ADMIN'], title:'Atualizar medicamento',
+            description:'Edita nome, princípio ativo ou preço de referência de um medicamento existente.',
+            pathParams:[{name:'id'}],
+            body:[{name:'nmMedicamento',type:'string',required:true},{name:'dsPrincipio',type:'string',required:false},{name:'vlPrecoRef',type:'number',required:false}] },
+        { method:'DELETE', path:'/medicamentos/{id}', profiles:['ADMIN'], title:'Remover medicamento',
+            description:'Só admin pode remover — evita que um veterinário apague sem querer um medicamento já usado em prescrições.', pathParams:[{name:'id'}] },
+
+        // ---- Pets ----
+        { method:'POST', path:'/pets', profiles:['TUTOR'], title:'Cadastrar pet',
+            description:'O tutor dono vem do token automaticamente. Espécie aceita CAO, GATO, AVE ou OUTRO (se OUTRO, preencher "especieOutro").',
+            body:[{name:'nmPet',type:'string',required:true},{name:'especie',type:'string',required:true,note:'CAO, GATO, AVE ou OUTRO'},{name:'especieOutro',type:'string',required:false},{name:'raca',type:'string',required:true},{name:'dtNascimento',type:'date',required:true},{name:'peso',type:'number',required:false}] },
+        { method:'GET', path:'/pets', profiles:['TUTOR'], title:'Listar meus pets',
+            description:'Lista todos os pets do tutor autenticado.' },
+        { method:'GET', path:'/pets/{id}', profiles:['TUTOR','VETERINARIO'], title:'Buscar pet por ID',
+            description:'Veterinário vê qualquer pet. Tutor só vê o próprio.', pathParams:[{name:'id'}] },
+        { method:'GET', path:'/pets/tutor/{idTutor}', profiles:['VETERINARIO'], title:'Listar pets de um tutor específico',
+            description:'Permite ao veterinário ver todos os pets de um tutor pelo id dele.', pathParams:[{name:'idTutor'}] },
+        { method:'PUT', path:'/pets/{id}', profiles:['TUTOR'], title:'Atualizar pet',
+            description:'Só o tutor dono do pet pode editar. Atualmente só nome e peso são editáveis por essa rota.',
+            pathParams:[{name:'id'}],
+            body:[{name:'nmPet',type:'string',required:true},{name:'peso',type:'number',required:false}] },
+        { method:'DELETE', path:'/pets/{id}', profiles:['TUTOR'], title:'Deletar pet',
+            description:'Só o tutor dono do pet pode remover.', pathParams:[{name:'id'}] },
+
+        // ---- Planos de Tratamento ----
+        { method:'POST', path:'/planos', profiles:['VETERINARIO'], title:'Prescrever plano de tratamento',
+            description:'O veterinário define uma sequência de tipos de evento futuros para um pet (mínimo 2 itens). A ordem da lista "idsTipoEvento" vira a ordem do plano — o tutor agenda um item de cada vez, em ordem, e ganha bônus de pontos ao concluir tudo.',
+            body:[{name:'idPet',type:'number',required:true},{name:'nrPontosBonus',type:'number',required:false,note:'não pode ser negativo'},{name:'idsTipoEvento',type:'array',required:true,note:'lista de ids, mínimo 2 itens, na ordem desejada'}] },
+        { method:'GET', path:'/planos', profiles:['TUTOR','VETERINARIO'], title:'Listar planos de tratamento',
+            description:'Tutor vê os planos dos próprios pets. Veterinário vê os planos que ele mesmo prescreveu.' },
+        { method:'GET', path:'/planos/{id}', profiles:['TUTOR','VETERINARIO'], title:'Buscar plano por ID',
+            description:'Retorna o plano com todos os itens da sequência. Só o tutor dono ou o veterinário que prescreveu têm acesso.', pathParams:[{name:'id'}] },
+        { method:'PATCH', path:'/planos/itens/{idItem}/agendar', profiles:['TUTOR'], title:'Agendar próximo item do plano',
+            description:'O tutor agenda o próximo item pendente da sequência, escolhendo só veterinário e horário — o tipo de evento e o pet já vêm definidos pelo item do plano.',
+            pathParams:[{name:'idItem',note:'id do item do plano (não é o id do plano)'}],
+            body:[{name:'idVeterinario',type:'number',required:true},{name:'dtEvento',type:'date',required:true},{name:'dsObservacao',type:'string',required:false}] },
+
+        // ---- Pontos ----
+        { method:'GET', path:'/pontos', profiles:['TUTOR','ADMIN'], title:'Listar lançamentos de pontos',
+            description:'Tutor vê os próprios lançamentos (pendentes e liberados, vindos de eventos concluídos ou bônus de plano). Admin vê a fila de todos os lançamentos pendentes de liberação.' },
+        { method:'PATCH', path:'/pontos/{id}/liberar', profiles:['ADMIN'], title:'Liberar lançamento de pontos',
+            description:'Só depois dessa liberação os pontos entram de fato no saldo do tutor.', pathParams:[{name:'id'}] },
+
+        // ---- Prescrições ----
+        { method:'POST', path:'/prescricoes', profiles:['VETERINARIO'], title:'Solicitar prescrição de medicamento',
+            description:'O veterinário responsável por um evento solicita um medicamento para o paciente. Nasce com status SOLICITADO, aguardando liberação do admin.',
+            body:[{name:'idEvento',type:'number',required:true},{name:'idMedicamento',type:'number',required:true},{name:'dsPosologia',type:'string',required:true},{name:'dtInicio',type:'date',required:true},{name:'dtFim',type:'date',required:false},{name:'qtDosesDia',type:'number',required:false,note:'deve ser positivo'}] },
+        { method:'GET', path:'/prescricoes', profiles:['TUTOR','VETERINARIO','ADMIN'], title:'Listar prescrições',
+            description:'Tutor vê as dos próprios pets. Veterinário vê as que ele solicitou. Admin vê a fila de pendentes (status SOLICITADO).' },
+        { method:'GET', path:'/prescricoes/{id}', profiles:['TUTOR','VETERINARIO','ADMIN'], title:'Buscar prescrição por ID',
+            description:'Acesso permitido ao tutor dono do pet, ao veterinário responsável pelo evento, ou a qualquer admin.', pathParams:[{name:'id'}] },
+        { method:'PATCH', path:'/prescricoes/{id}/liberar', profiles:['ADMIN'], title:'Liberar ou negar prescrição',
+            description:'Se aprovado=true, dispara um e-mail real avisando o tutor que o medicamento foi liberado.',
+            pathParams:[{name:'id'}], body:[{name:'aprovado',type:'boolean',required:true}] },
+
+        // ---- Recompensas ----
+        { method:'GET', path:'/recompensas', profiles:['GERAL'], title:'Listar catálogo de recompensas',
+            description:'Lista as recompensas ativas disponíveis para resgate. Acessível a qualquer usuário autenticado.' },
+        { method:'POST', path:'/recompensas', profiles:['VETERINARIO'], title:'Cadastrar recompensa',
+            description:'Adiciona uma recompensa ao catálogo. Restrito à equipe da clínica (veterinário).',
+            body:[{name:'nome',type:'string',required:true},{name:'descricao',type:'string',required:false},{name:'custoPontos',type:'number',required:true},{name:'tipo',type:'string',required:true,note:'PRODUTO ou CUPOM_DESCONTO'}] },
+        { method:'GET', path:'/recompensas/saldo', profiles:['TUTOR'], title:'Ver saldo de pontos',
+            description:'Retorna o saldo de pontos acumulado do tutor autenticado.' },
+        { method:'PATCH', path:'/recompensas/{id}/resgatar', profiles:['TUTOR'], title:'Resgatar recompensa',
+            description:'Debita os pontos do saldo do tutor e cria um resgate com status PENDENTE, aguardando validação de um veterinário.', pathParams:[{name:'id',note:'id da recompensa'}] },
+        { method:'GET', path:'/recompensas/resgates', profiles:['TUTOR','VETERINARIO'], title:'Listar resgates',
+            description:'Tutor vê os próprios resgates. Veterinário vê todos os resgates pendentes de validação.' },
+        { method:'PATCH', path:'/recompensas/resgates/{idResgate}/validar', profiles:['VETERINARIO'], title:'Validar ou negar resgate',
+            description:'O veterinário aprova ou nega um resgate pendente.', pathParams:[{name:'idResgate'}], body:[{name:'aprovado',type:'boolean',required:true}] },
+
+        // ---- Tutores ----
+        { method:'GET', path:'/tutores/{id}', profiles:['TUTOR','VETERINARIO'], title:'Buscar tutor por ID',
+            description:'Veterinário vê qualquer tutor. Tutor só vê o próprio cadastro.', pathParams:[{name:'id'}] },
+        { method:'GET', path:'/tutores', profiles:['VETERINARIO'], title:'Listar todos os tutores',
+            description:'Lista completa de tutores cadastrados. Restrito a veterinário.' },
+        { method:'PUT', path:'/tutores/{id}', profiles:['TUTOR'], title:'Atualizar dados do tutor',
+            description:'Só o próprio tutor pode editar nome e telefone.',
+            pathParams:[{name:'id'}], body:[{name:'nmTutor',type:'string',required:true,note:'2 a 100 caracteres'},{name:'nrTelefone',type:'string',required:false,note:'10 ou 11 dígitos'}] },
+        { method:'DELETE', path:'/tutores/{id}', profiles:['TUTOR'], title:'Deletar tutor',
+            description:'Só o próprio tutor pode se remover.', pathParams:[{name:'id'}] },
+
+        // ---- Veterinários / Agenda ----
+        { method:'GET', path:'/veterinarios', profiles:['GERAL'], title:'Listar veterinários',
+            description:'Lista todos os veterinários — usado principalmente pelo tutor para escolher com quem agendar. Acessível a qualquer usuário autenticado.' },
+        { method:'GET', path:'/veterinarios/{id}', profiles:['GERAL'], title:'Buscar veterinário por ID',
+            description:'Detalhe de um veterinário (nome, CRMV, clínica). Acessível a qualquer usuário autenticado.', pathParams:[{name:'id'}] },
+        { method:'POST', path:'/veterinarios', profiles:['ADMIN'], title:'Cadastrar veterinário',
+            description:'Só admin cria contas de veterinário. O sistema gera automaticamente um CRMV de 6 dígitos e uma senha temporária, enviados por e-mail.',
+            body:[{name:'nome',type:'string',required:true},{name:'email',type:'string',required:true},{name:'idClinica',type:'number',required:false}] },
+        { method:'PUT', path:'/veterinarios/{id}', profiles:['VETERINARIO'], title:'Atualizar dados do veterinário',
+            description:'Só o próprio veterinário pode editar seu nome e a clínica vinculada.',
+            pathParams:[{name:'id'}], body:[{name:'nome',type:'string',required:true},{name:'idClinica',type:'number',required:false}] },
+        { method:'GET', path:'/veterinarios/{id}/disponibilidade', profiles:['GERAL'], title:'Listar horários fixos de atendimento',
+            description:'Grade semanal de horários em que o veterinário atende. Acessível a qualquer usuário autenticado (usado pelo tutor para escolher horário livre).', pathParams:[{name:'id',note:'id do veterinário'}] },
+        { method:'POST', path:'/veterinarios/{id}/disponibilidade', profiles:['VETERINARIO'], title:'Adicionar horário fixo de atendimento',
+            description:'Só o próprio veterinário pode adicionar. nrDiaSemana: 1=segunda...7=domingo. Horários no formato HH:mm.',
+            pathParams:[{name:'id',note:'id do veterinário'}],
+            body:[{name:'nrDiaSemana',type:'number',required:true,note:'1 a 7'},{name:'hrInicio',type:'string',required:true,note:'HH:mm'},{name:'hrFim',type:'string',required:true,note:'HH:mm'}] },
+        { method:'DELETE', path:'/veterinarios/{id}/disponibilidade/{idDisponibilidade}', profiles:['VETERINARIO'], title:'Remover horário fixo',
+            description:'Só o próprio veterinário pode remover um horário da própria grade.',
+            pathParams:[{name:'id',note:'id do veterinário'},{name:'idDisponibilidade'}] },
+        { method:'GET', path:'/veterinarios/{id}/bloqueios', profiles:['GERAL'], title:'Listar bloqueios de agenda',
+            description:'Períodos em que o veterinário não atende (férias, compromissos etc.). Acessível a qualquer usuário autenticado.', pathParams:[{name:'id',note:'id do veterinário'}] },
+        { method:'POST', path:'/veterinarios/{id}/bloqueios', profiles:['VETERINARIO'], title:'Adicionar bloqueio de agenda',
+            description:'Só o próprio veterinário pode bloquear um dia ou período da própria agenda.',
+            pathParams:[{name:'id',note:'id do veterinário'}],
+            body:[{name:'dtInicio',type:'date',required:true},{name:'dtFim',type:'date',required:true},{name:'motivo',type:'string',required:false}] },
+        { method:'DELETE', path:'/veterinarios/{id}/bloqueios/{idBloqueio}', profiles:['VETERINARIO'], title:'Remover bloqueio de agenda',
+            description:'Só o próprio veterinário pode remover um bloqueio da própria agenda.',
+            pathParams:[{name:'id',note:'id do veterinário'},{name:'idBloqueio'}] },
+    ];
+
+    const PROFILE_LABEL = { TUTOR:'Tutor', VETERINARIO:'Veterinário', ADMIN:'Admin', GERAL:'Geral' };
+
+    let activeProfile = 'GERAL';
+    let activeEndpoint = null;
+
+    const tabsEl = document.getElementById('tabs');
+    const sidebar = document.getElementById('sidebar');
+    const main = document.getElementById('main');
+
+    function countFor(key){ return ENDPOINTS.filter(e => e.profiles.includes(key)).length; }
+
+    function renderTabs(){
+        tabsEl.innerHTML = PROFILES.map(p =>
+            `<div class="tab ${p.key===activeProfile?'active':''}" data-key="${p.key}">${p.label}<span class="count">${countFor(p.key)}</span></div>`
+        ).join('');
+        tabsEl.querySelectorAll('.tab').forEach(el => {
+            el.addEventListener('click', () => {
+                activeProfile = el.dataset.key;
+                activeEndpoint = null;
+                renderTabs();
+                renderSidebar();
+                renderPlaceholder();
+            });
+        });
+    }
+
+    const SECTION_NOTES = {
+        GERAL: 'Rotas públicas (login, cadastro) ou acessíveis a qualquer usuário autenticado, independente do perfil.',
+        TUTOR: 'Rotas usadas pelo dono dos pets: agendar, ver histórico, resgatar recompensas, gerenciar seu próprio cadastro.',
+        VETERINARIO: 'Rotas usadas pela equipe clínica: concluir atendimentos, prescrever, gerenciar agenda e catálogo.',
+        ADMIN: 'Rotas administrativas: liberar pontos e prescrições pendentes, cadastrar veterinários e outros admins.',
     };
 
-    function selectEndpoint(btn, key) {
-        currentEpKey = key;
-        const ep = EP[key];
-
-        if (activeBtn) activeBtn.classList.remove('active');
-        btn.classList.add('active');
-        activeBtn = btn;
-
-        document.getElementById('welcome').style.display = 'none';
-        const rv = document.getElementById('request-view');
-        rv.style.display = 'flex';
-
-        const mb = document.getElementById('tb-method');
-        mb.textContent = ep.method;
-        mb.className = 'method-badge badge-' + ep.method.toLowerCase();
-        document.getElementById('tb-title').textContent = ep.title;
-
-        let tags = '';
-        if (ep.auth) tags += '<span class="tag tag-auth">🔒 JWT</span>';
-        if (ep.qp) tags += '<span class="tag tag-page">paginável</span>';
-        document.getElementById('tb-desc').innerHTML = (ep.desc ? ep.desc + ' ' : '') + tags;
-
-        resetResponse();
-        renderParams(ep);
-    }
-
-    function resetResponse() {
-        document.getElementById('response-area').innerHTML = 'A resposta aparecerá aqui após enviar.';
-        document.getElementById('response-area').className = 'empty';
-        document.getElementById('status-chip').textContent = 'aguardando';
-        document.getElementById('status-chip').className = 'status-chip status-pending';
-        lastResponseText = '';
-    }
-
-    function renderParams(ep) {
-        const panel = document.getElementById('params-panel');
-        panel.innerHTML = '';
-
-        if (!ep.fields || ep.fields.length === 0) {
-            panel.innerHTML = '<p class="no-params">Nenhum parâmetro necessário para este endpoint.</p>';
-            return;
-        }
-
-        const ppIds = ep.pp || [];
-        const pathFields = ep.fields.filter(f => ppIds.includes(f.id));
-        const bodyFields = ep.fields.filter(f => !ppIds.includes(f.id));
-
-        if (pathFields.length > 0) {
-            addSectionTitle(panel, 'Path Parameters', false);
-            pathFields.forEach(f => addField(panel, f));
-        }
-
-        if (bodyFields.length > 0) {
-            const isQuery = (ep.qp || []).some(q => bodyFields.find(f => f.id === q));
-            const label = isQuery && !ep.body ? 'Query Parameters' : 'Request Body';
-            addSectionTitle(panel, label, pathFields.length > 0);
-            bodyFields.forEach(f => addField(panel, f));
-        }
-    }
-
-    function addSectionTitle(container, text, gap) {
-        const d = document.createElement('div');
-        d.className = 'section-title' + (gap ? ' section-gap' : '');
-        d.textContent = text;
-        container.appendChild(d);
-    }
-
-    function addField(container, f) {
-        const wrap = document.createElement('div');
-        wrap.className = 'field-group';
-
-        if (f.type === 'checkbox') {
-            wrap.innerHTML = `<label class="checkbox-row"><input type="checkbox" id="f-${f.id}"/><span>${f.label}</span></label>`;
-        } else if (f.type === 'select') {
-            const opts = (f.options || []).map(o => `<option value="${o}">${o}</option>`).join('');
-            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : ''}</label><select id="f-${f.id}">${opts}</select>`;
-        } else if (f.type === 'textarea') {
-            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : '<span class="opt">opcional</span>'}</label><textarea id="f-${f.id}" placeholder="${f.ph || ''}"></textarea>`;
-        } else {
-            wrap.innerHTML = `<label>${f.label}${f.req ? '<span class="req">*</span>' : '<span class="opt">opcional</span>'}</label><input type="${f.type}" id="f-${f.id}" placeholder="${f.ph || ''}"/>`;
-        }
-        container.appendChild(wrap);
-    }
-
-    function getVals(ep) {
-        const v = {};
-        (ep.fields || []).forEach(f => {
-            const el = document.getElementById('f-' + f.id);
-            if (!el) return;
-            v[f.id] = f.type === 'checkbox' ? el.checked : el.value.trim();
+    function renderSidebar(){
+        const list = ENDPOINTS.filter(e => e.profiles.includes(activeProfile));
+        let html = `<div class="section-note">${SECTION_NOTES[activeProfile]}</div>`;
+        list.forEach((ep) => {
+            const idx = ENDPOINTS.indexOf(ep);
+            const otherProfiles = ep.profiles.filter(p => p !== activeProfile);
+            html += `<div class="ep-item" data-idx="${idx}">
+      <div class="row">
+        <span class="method-tag m-${ep.method}">${ep.method}</span>
+        <span class="path mono">${ep.path}</span>
+      </div>
+      <div class="title">${ep.title}${otherProfiles.length ? ' · também: ' + otherProfiles.map(p=>PROFILE_LABEL[p]).join(', ') : ''}</div>
+    </div>`;
         });
-        return v;
+        sidebar.innerHTML = html;
+        sidebar.querySelectorAll('.ep-item').forEach(el => {
+            el.addEventListener('click', () => {
+                sidebar.querySelectorAll('.ep-item').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                renderOperation(ENDPOINTS[parseInt(el.dataset.idx)]);
+            });
+        });
     }
 
-    function buildUrl(ep, v) {
-        const base = document.getElementById('base-url').value.replace(/\/$/, '');
-        let path = ep.path;
-        (ep.pp || []).forEach(p => { path = path.replace('{' + p + '}', encodeURIComponent(v[p] || '')); });
-        const qp = (ep.qp || []).filter(p => v[p]).map(p => `${p}=${encodeURIComponent(v[p])}`).join('&');
-        return base + path + (qp ? '?' + qp : '');
+    function renderPlaceholder(){
+        main.innerHTML = `<div class="placeholder">
+    <h2>Nenhum endpoint selecionado</h2>
+    <p>Escolha um endpoint à esquerda para ver a descrição completa e montar o teste.</p>
+  </div>`;
     }
 
-    async function sendRequest() {
-        if (!currentEpKey) return;
-        const ep = EP[currentEpKey];
-        const v = getVals(ep);
+    function exampleValue(f){
+        if(f.type === 'number') return 0;
+        if(f.type === 'boolean') return true;
+        if(f.type === 'date') return '2026-01-01';
+        if(f.type === 'array') return [];
+        return '';
+    }
 
-        for (const f of (ep.fields || [])) {
-            if (f.req && f.type !== 'checkbox' && !v[f.id]) {
-                const el = document.getElementById('f-' + f.id);
-                if (el) { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 2000); }
-                showResp(`<span style="color:var(--red)">Campo obrigatório: ${f.label}</span>`);
-                return;
-            }
+    function renderOperation(ep){
+        let paramsHtml = '';
+        if(ep.pathParams && ep.pathParams.length){
+            paramsHtml += '<section class="block"><h3>Parâmetros da URL</h3>';
+            ep.pathParams.forEach(p => {
+                paramsHtml += `<div class="param-row">
+        <label>${p.name}${p.note ? `<span class="note">${p.note}</span>` : ''}</label>
+        <input data-pname="${p.name}" placeholder="valor" />
+      </div>`;
+            });
+            paramsHtml += '</section>';
         }
 
-        const url = buildUrl(ep, v);
-        const btn = document.getElementById('send-btn');
-        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Enviando...';
+        let bodyHtml = '';
+        if(ep.body && ep.body.length){
+            const example = {};
+            ep.body.forEach(f => example[f.name] = exampleValue(f));
+            const fieldsList = ep.body.map(f =>
+                `<code>${f.name}</code> (${f.type}${f.required ? ', <span class="req">obrigatório</span>' : ', opcional'})${f.note ? ' — ' + f.note : ''}`
+            ).join('<br>');
+            bodyHtml = `<section class="block"><h3>Corpo da requisição (JSON)</h3>
+      <div class="body-fields-note">${fieldsList}</div>
+      <textarea id="bodyEditor">${escapeHtml(JSON.stringify(example, null, 2))}</textarea>
+    </section>`;
+        }
 
-        const respEl = document.getElementById('response-area');
-        respEl.className = ''; respEl.innerHTML = '<span class="spinner"></span>Aguardando resposta...';
+        const badges = ep.profiles.map(p => `<span class="profile-pill p-${p}">${PROFILE_LABEL[p]}</span>`).join(' ');
 
-        const headers = {'Content-Type': 'application/json'};
-        if (ep.auth && token) headers['Authorization'] = 'Bearer ' + token;
+        main.innerHTML = `
+    <div class="op-header">
+      <div class="row1">
+        <span class="method-tag m-${ep.method}">${ep.method}</span>
+        <span class="path mono">${ep.path}</span>
+      </div>
+      <div class="title">${ep.title}</div>
+      <div class="description">${ep.description}</div>
+      <div class="profile-badges">${badges}</div>
+    </div>
+    <div class="cors-note">Se a chamada falhar sem mostrar nenhum status HTTP, é CORS (esta página abre como "file://"). Adicione uma configuração de CORS permissiva no SecurityConfig do backend para testes.</div>
+    ${paramsHtml}
+    ${bodyHtml}
+    <div class="send-row"><button class="btn-amber" id="sendBtn">Enviar requisição</button></div>
+    <section class="block">
+      <h3>Resposta</h3>
+      <div id="respStatus" class="resp-status s0">aguardando envio</div>
+      <pre id="respBody">—</pre>
+      <button class="use-token-btn" id="useTokenBtn" style="display:none;">Usar token desta resposta</button>
+    </section>
+  `;
+        document.getElementById('sendBtn').addEventListener('click', () => sendRequest(ep));
+    }
+
+    async function sendRequest(ep){
+        const base = document.getElementById('baseUrl').value.replace(/\/$/, '');
+        let path = ep.path;
+
+        main.querySelectorAll('[data-pname]').forEach(input => {
+            if(input.value) path = path.replace('{' + input.dataset.pname + '}', encodeURIComponent(input.value));
+        });
+
+        const headers = {};
+        const token = document.getElementById('tokenField').value.trim();
+        if(token) headers['Authorization'] = 'Bearer ' + token;
 
         const opts = { method: ep.method, headers };
-        if (ep.body) opts.body = JSON.stringify(ep.body(v));
+        const bodyEl = document.getElementById('bodyEditor');
+        if(bodyEl && bodyEl.value.trim()){
+            headers['Content-Type'] = 'application/json';
+            opts.body = bodyEl.value;
+        }
 
-        const t0 = Date.now();
-        try {
-            const res = await fetch(url, opts);
-            const ms = Date.now() - t0;
-            const chip = document.getElementById('status-chip');
-            chip.textContent = res.status + ' ' + res.statusText;
-            chip.className = 'status-chip ' + (res.ok ? 'status-ok' : 'status-err');
+        const statusEl = document.getElementById('respStatus');
+        const bodyOut = document.getElementById('respBody');
+        const useTokenBtn = document.getElementById('useTokenBtn');
+        statusEl.textContent = 'enviando...';
+        statusEl.className = 'resp-status s0';
+        useTokenBtn.style.display = 'none';
 
+        const startedAt = performance.now();
+        try{
+            const res = await fetch(base + path, opts);
+            const ms = Math.round(performance.now() - startedAt);
             const text = await res.text();
-            let parsed = null;
-            try { parsed = JSON.parse(text); } catch(e) {}
+            let pretty = text, parsed = null;
+            try{ parsed = JSON.parse(text); pretty = JSON.stringify(parsed, null, 2); }catch(e){}
 
-            if (res.ok && parsed && parsed.token && (currentEpKey === 'login' || currentEpKey === 'register')) {
-                token = parsed.token;
-                localStorage.setItem('jornada_jwt', token);
-                updateTokenDisplay();
+            statusEl.textContent = res.status + ' ' + res.statusText + ' · ' + ms + 'ms';
+            statusEl.className = 'resp-status ' + (res.status < 300 ? 's2' : (res.status < 500 ? 's4' : 's5'));
+            bodyOut.textContent = pretty || '(corpo vazio)';
+
+            const foundToken = parsed && (parsed.token || parsed.accessToken || parsed.jwt);
+            if(foundToken){
+                useTokenBtn.style.display = 'inline-block';
+                useTokenBtn.onclick = () => { document.getElementById('tokenField').value = foundToken; };
             }
-
-            lastResponseText = parsed ? JSON.stringify(parsed, null, 2) : (text || '(sem corpo — 204 No Content)');
-
-            const metaHtml = `<div class="response-meta">
-      <span><strong>${res.status}</strong> ${res.statusText}</span>
-      <span>${ms}ms</span>
-      <span style="font-size:10px;color:var(--tx3)">${url}</span>
-    </div>`;
-            respEl.className = '';
-            respEl.innerHTML = metaHtml + highlight(lastResponseText);
-        } catch(err) {
-            document.getElementById('status-chip').textContent = 'Erro';
-            document.getElementById('status-chip').className = 'status-chip status-err';
-            showResp(`<span style="color:var(--red)">✕ Falha na conexão\n\n${err.message}\n\nVerifique se a API está rodando em:\n${document.getElementById('base-url').value}</span>`);
-        }
-
-        btn.disabled = false; btn.innerHTML = '▶ Enviar';
-    }
-
-    function showResp(html) {
-        const el = document.getElementById('response-area');
-        el.className = ''; el.innerHTML = html;
-    }
-
-    function highlight(str) {
-        return str
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
-                let c = 'j-num';
-                if (/^"/.test(m)) c = /:$/.test(m) ? 'j-key' : 'j-str';
-                else if (/true|false/.test(m)) c = 'j-bool';
-                else if (/null/.test(m)) c = 'j-null';
-                return `<span class="${c}">${m}</span>`;
-            });
-    }
-
-    function updateTokenDisplay() {
-        const el = document.getElementById('token-display');
-        const clr = document.getElementById('token-clear');
-        if (token) {
-            el.textContent = token.substring(0, 38) + '…';
-            el.className = 'token-box';
-            clr.style.display = 'block';
-        } else {
-            el.textContent = 'Faça login para obter token';
-            el.className = 'token-box empty';
-            clr.style.display = 'none';
+        }catch(err){
+            statusEl.textContent = 'erro de rede / CORS';
+            statusEl.className = 'resp-status s5';
+            bodyOut.textContent = String(err);
         }
     }
 
-    function clearToken() { token = ''; localStorage.removeItem('jornada_jwt'); updateTokenDisplay(); }
-
-    function copyToken() {
-        if (!token) return;
-        navigator.clipboard.writeText(token);
-        const el = document.getElementById('token-display');
-        const orig = el.textContent;
-        el.textContent = '✓ Copiado!';
-        setTimeout(() => updateTokenDisplay(), 1500);
+    function escapeHtml(str){
+        return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function copyResponse() {
-        if (!lastResponseText) return;
-        navigator.clipboard.writeText(lastResponseText);
-        const btn = document.querySelector('.copy-btn');
-        btn.textContent = '✓ copiado';
-        setTimeout(() => btn.textContent = 'copiar', 1500);
-    }
-
-    document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') sendRequest(); });
+    renderTabs();
+    renderSidebar();
 </script>
 </body>
 </html>
