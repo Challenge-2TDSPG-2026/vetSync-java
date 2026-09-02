@@ -3,6 +3,7 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.LancamentoPontos;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.PontosService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -67,9 +68,7 @@ public class PontosController {
     @GetMapping
     @Operation(summary = "Listar lançamentos de pontos", description = "Tutor vê os próprios (pendentes e liberados, de evento ou bônus de plano); admin vê a fila de pendentes.")
     public List<LancamentoPontosResponse> listar(Authentication authentication) {
-        boolean ehAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        List<LancamentoPontos> lancamentos = ehAdmin
+        List<LancamentoPontos> lancamentos = PerfilUtils.isAdmin(authentication)
                 ? pontosService.listarPendentes()
                 : pontosService.listarParaTutor(authentication.getName());
         return lancamentos.stream().map(this::toResponse).toList();

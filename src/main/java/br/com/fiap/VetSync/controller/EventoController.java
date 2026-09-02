@@ -2,10 +2,16 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.EventoSaude;
 import br.com.fiap.VetSync.entity.StatusEvento;
+import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.EventoService;
 import br.com.fiap.VetSync.service.PetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,12 +33,22 @@ public class EventoController {
     private final PetService petService;
 
     public record EventoAgendarRequest(
-            Long idPet, Long idTipoEvento, Long idVeterinario, LocalDate dtEvento, String dsObservacao
+            @NotNull(message = "idPet é obrigatório") Long idPet,
+            @NotNull(message = "idTipoEvento é obrigatório") Long idTipoEvento,
+            @NotNull(message = "idVeterinario é obrigatório") Long idVeterinario,
+            @NotNull(message = "dtEvento é obrigatória") LocalDate dtEvento,
+            String dsObservacao
     ) {}
 
-    public record EventoConcluirRequest(String dsObservacao, BigDecimal vlCusto) {}
+    public record EventoConcluirRequest(
+            String dsObservacao,
+            @PositiveOrZero(message = "vlCusto não pode ser negativo") BigDecimal vlCusto
+    ) {}
 
-    public record EventoCancelarRequest(String motivo, LocalDate reagendarPara) {}
+    public record EventoCancelarRequest(
+            @NotBlank(message = "motivo do cancelamento é obrigatório") String motivo,
+            @FutureOrPresent(message = "reagendarPara não pode ser uma data passada") LocalDate reagendarPara
+    ) {}
 
     public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
 
@@ -64,15 +80,11 @@ public class EventoController {
         );
     }
 
-    private boolean ehVeterinario(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_VETERINARIO"));
-    }
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('TUTOR')")
     @Operation(summary = "Tutor agenda um evento de saúde para um pet dele, escolhendo veterinário e horário livre na agenda dele")
-    public EventoResponse agendar(Authentication authentication, @RequestBody EventoAgendarRequest request) {
+    public EventoResponse agendar(Authentication authentication, @Valid @RequestBody EventoAgendarRequest request) {
         boolean donoDoPet = petService.buscarPorId(request.idPet()).getTutor().getDsEmail()
                 .equalsIgnoreCase(authentication.getName());
         if (!donoDoPet) {
@@ -88,7 +100,7 @@ public class EventoController {
     @GetMapping
     @Operation(summary = "Listar eventos", description = "Tutor vê os eventos dos próprios pets; veterinário vê os eventos atribuídos a ele.")
     public List<EventoResponse> listar(Authentication authentication) {
-        List<EventoSaude> eventos = ehVeterinario(authentication)
+        List<EventoSaude> eventos = PerfilUtils.isVeterinario(authentication)
                 ? eventoService.listarParaVeterinario(authentication.getName())
                 : eventoService.listarParaTutor(authentication.getName());
         return eventos.stream().map(this::toResponse).toList();
@@ -104,14 +116,14 @@ public class EventoController {
     @PatchMapping("/{id}/concluir")
     @PreAuthorize("hasRole('VETERINARIO') and @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
     @Operation(summary = "Veterinário conclui um evento AGENDADO, com observações clínicas e custo final")
-    public EventoResponse concluir(@PathVariable Long id, @RequestBody EventoConcluirRequest request) {
+    public EventoResponse concluir(@PathVariable Long id, @Valid @RequestBody EventoConcluirRequest request) {
         return toResponse(eventoService.concluir(id, request.dsObservacao(), request.vlCusto()));
     }
 
     @PatchMapping("/{id}/cancelar")
     @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorDoPet(#id, authentication)")
     @Operation(summary = "Tutor cancela um evento AGENDADO", description = "Motivo é obrigatório. Veterinário não cancela mais consultas. Se 'reagendarPara' vier preenchido, já cria um novo evento AGENDADO na nova data, no mesmo pet/tipo/veterinário.")
-    public EventoCancelarResponse cancelar(@PathVariable Long id, @RequestBody EventoCancelarRequest request) {
+    public EventoCancelarResponse cancelar(@PathVariable Long id, @Valid @RequestBody EventoCancelarRequest request) {
         EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara());
         return new EventoCancelarResponse(
                 toResponse(resultado.eventoCancelado()),

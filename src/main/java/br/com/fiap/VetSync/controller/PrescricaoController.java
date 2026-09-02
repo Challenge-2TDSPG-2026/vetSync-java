@@ -3,10 +3,15 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.Prescricao;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.PrescricaoService;
 import br.com.fiap.VetSync.service.VeterinarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,8 +33,12 @@ public class PrescricaoController {
     private final AdminRepository adminRepository;
 
     public record PrescricaoRequest(
-            Long idEvento, Long idMedicamento, String dsPosologia,
-            LocalDate dtInicio, LocalDate dtFim, Integer qtDosesDia
+            @NotNull(message = "idEvento é obrigatório") Long idEvento,
+            @NotNull(message = "idMedicamento é obrigatório") Long idMedicamento,
+            @NotBlank(message = "dsPosologia é obrigatória") String dsPosologia,
+            @NotNull(message = "dtInicio é obrigatória") LocalDate dtInicio,
+            LocalDate dtFim,
+            @Positive(message = "qtDosesDia deve ser positivo") Integer qtDosesDia
     ) {}
 
     public record PrescricaoLiberarRequest(boolean aprovado) {}
@@ -66,14 +75,6 @@ public class PrescricaoController {
         );
     }
 
-    private boolean ehVeterinario(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_VETERINARIO"));
-    }
-
-    private boolean ehAdmin(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-    }
-
     private Long idAdminAutenticado(Authentication authentication) {
         return adminRepository.findByDsEmail(authentication.getName())
                 .map(Admin::getIdAdmin)
@@ -85,7 +86,7 @@ public class PrescricaoController {
     @PreAuthorize("hasRole('VETERINARIO')")
     @Operation(summary = "Veterinário solicita um medicamento para o paciente de um evento sob sua responsabilidade",
             description = "Cria a prescrição com status SOLICITADO, aguardando liberação do ADMIN.")
-    public PrescricaoResponse solicitar(Authentication authentication, @RequestBody PrescricaoRequest request) {
+    public PrescricaoResponse solicitar(Authentication authentication, @Valid @RequestBody PrescricaoRequest request) {
         Long idVeterinario = veterinarioService.buscarAutenticado(authentication).getIdVeterinario();
         Prescricao prescricao = prescricaoService.solicitar(
                 request.idEvento(), request.idMedicamento(), request.dsPosologia(),
@@ -98,14 +99,29 @@ public class PrescricaoController {
     @Operation(summary = "Listar prescrições", description = "Tutor vê as dos próprios pets; veterinário vê as que ele solicitou; admin vê a fila de pendentes (SOLICITADO).")
     public List<PrescricaoResponse> listar(Authentication authentication) {
         List<Prescricao> prescricoes;
-        if (ehAdmin(authentication)) {
+        if (PerfilUtils.isAdmin(authentication)) {
             prescricoes = prescricaoService.listarPendentes();
-        } else if (ehVeterinario(authentication)) {
+        } else if (PerfilUtils.isVeterinario(authentication)) {
             prescricoes = prescricaoService.listarPorVeterinario(authentication.getName());
         } else {
             prescricoes = prescricaoService.listarPorTutor(authentication.getName());
         }
         return prescricoes.stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Buscar prescrição por ID", description = "Tutor dono do pet, veterinário responsável pelo evento ou qualquer admin.")
+    public PrescricaoResponse buscarPorId(@PathVariable Long id, Authentication authentication) {
+        Prescricao prescricao = prescricaoService.buscarPorId(id);
+        var evento = prescricao.getEvento();
+        boolean ehVet = evento != null && evento.getVeterinario() != null
+                && evento.getVeterinario().getDsEmail().equalsIgnoreCase(authentication.getName());
+        boolean ehTutor = evento != null && evento.getPet() != null && evento.getPet().getTutor() != null
+                && evento.getPet().getTutor().getDsEmail().equalsIgnoreCase(authentication.getName());
+        if (!PerfilUtils.isAdmin(authentication) && !ehVet && !ehTutor) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem acesso a essa prescrição");
+        }
+        return toResponse(prescricao);
     }
 
     @PatchMapping("/{id}/liberar")

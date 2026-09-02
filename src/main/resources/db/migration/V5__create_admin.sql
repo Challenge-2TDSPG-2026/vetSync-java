@@ -1,5 +1,3 @@
-
-
 CREATE TABLE TB_ADMIN (
                           id_admin    NUMBER(10)    GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                           nm_admin    VARCHAR2(100) NOT NULL,
