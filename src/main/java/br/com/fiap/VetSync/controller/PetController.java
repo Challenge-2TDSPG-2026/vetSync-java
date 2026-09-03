@@ -35,16 +35,14 @@ public class PetController {
             String nmPet,
 
             @NotNull(message = "Espécie é obrigatória")
-            EspecieCategoria especie, // CAO, GATO, AVE ou OUTRO
-
-            String especieOutro, // obrigatório só quando especie = OUTRO
+            EspecieCategoria especie,
+            String especieOutro,
 
             @NotBlank(message = "Raça é obrigatória")
             String raca,
 
             @NotNull(message = "Data de nascimento é obrigatória")
             LocalDate dtNascimento,
-
             BigDecimal peso
     ) {}
 
@@ -123,19 +121,20 @@ public class PetController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
-    @Operation(summary = "Atualizar pet (nome e peso). Só o tutor dono do pet.")
+    @Operation(summary = "Atualizar pet (nome, peso, data de nascimento, raça/espécie). Só o tutor dono do pet.")
     public PetResponse atualizar(@PathVariable Long id, @RequestBody PetRequest request) {
         Pet petAtualizado = Pet.builder()
                 .nmPet(request.nmPet())
                 .nrPesoKg(request.peso())
+                .dtNascimento(request.dtNascimento())
                 .build();
-        return toResponse(petService.atualizar(id, petAtualizado));
+        return toResponse(petService.atualizar(id, petAtualizado, request.especie(), request.especieOutro(), request.raca()));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
-    @Operation(summary = "Deletar pet. Só o tutor dono do pet.")
+    @Operation(summary = "Deletar pet. Só o tutor dono do pet.", description = "Retorna 409 se o pet tiver eventos de saúde vinculados.")
     public void deletar(@PathVariable Long id) {
         petService.deletar(id);
     }

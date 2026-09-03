@@ -9,6 +9,7 @@ import br.com.fiap.VetSync.repository.EspecieRepository;
 import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.RacaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,7 +30,14 @@ public class PetService {
 
     public Pet cadastrar(Pet pet, Long idTutor, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Tutor tutor = tutorService.buscarPorId(idTutor);
+        Raca raca = resolverRaca(categoria, especieOutro, nmRaca);
 
+        pet.setTutor(tutor);
+        pet.setRaca(raca);
+        return petRepository.save(pet);
+    }
+
+    private Raca resolverRaca(EspecieCategoria categoria, String especieOutro, String nmRaca) {
         String nmEspecie = resolverNomeEspecie(categoria, especieOutro);
 
         Especie especie = especieRepository.findByNmEspecieIgnoreCase(nmEspecie)
@@ -37,14 +45,10 @@ public class PetService {
                         Especie.builder().nmEspecie(nmEspecie).build()
                 ));
 
-        Raca raca = racaRepository.findByNmRacaIgnoreCaseAndEspecie_IdEspecie(nmRaca.trim(), especie.getIdEspecie())
+        return racaRepository.findByNmRacaIgnoreCaseAndEspecie_IdEspecie(nmRaca.trim(), especie.getIdEspecie())
                 .orElseGet(() -> racaRepository.save(
                         Raca.builder().nmRaca(capitalizar(nmRaca)).especie(especie).build()
                 ));
-
-        pet.setTutor(tutor);
-        pet.setRaca(raca);
-        return petRepository.save(pet);
     }
 
     private String resolverNomeEspecie(EspecieCategoria categoria, String especieOutro) {
@@ -77,16 +81,34 @@ public class PetService {
         return petRepository.findByTutor_IdTutor(idTutor);
     }
 
-    public Pet atualizar(Long id, Pet petAtualizado) {
+    public Pet atualizar(Long id, Pet petAtualizado, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Pet pet = buscarPorId(id);
         pet.setNmPet(petAtualizado.getNmPet());
         pet.setNrPesoKg(petAtualizado.getNrPesoKg());
+
+        if (petAtualizado.getDtNascimento() != null) {
+            pet.setDtNascimento(petAtualizado.getDtNascimento());
+        }
+
+        if (categoria != null && nmRaca != null && !nmRaca.isBlank()) {
+            pet.setRaca(resolverRaca(categoria, especieOutro, nmRaca));
+        }
+
         return petRepository.save(pet);
     }
 
     public void deletar(Long id) {
         Pet pet = buscarPorId(id);
-        petRepository.delete(pet);
+        try {
+            petRepository.delete(pet);
+            petRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Não é possível remover este pet: existem eventos de saúde vinculados a ele. " +
+                            "Remova ou cancele os eventos primeiro."
+            );
+        }
     }
 
     public int calcularIdade(Pet pet) {
