@@ -4,6 +4,7 @@ import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Configuration
+@ConditionalOnProperty(name = "app.mockdata.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class MockData {
 

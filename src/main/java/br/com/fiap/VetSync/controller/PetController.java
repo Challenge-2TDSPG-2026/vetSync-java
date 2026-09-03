@@ -122,7 +122,7 @@ public class PetController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
     @Operation(summary = "Atualizar pet (nome, peso, data de nascimento, raça/espécie). Só o tutor dono do pet.")
-    public PetResponse atualizar(@PathVariable Long id, @RequestBody PetRequest request) {
+    public PetResponse atualizar(@PathVariable Long id, @RequestBody @Valid PetRequest request) {
         Pet petAtualizado = Pet.builder()
                 .nmPet(request.nmPet())
                 .nrPesoKg(request.peso())

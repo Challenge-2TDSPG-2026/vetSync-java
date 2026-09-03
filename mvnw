@@ -29,6 +29,11 @@
 #   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
 # ----------------------------------------------------------------------------
 
+if [ -z "$JAVA_HOME" ] && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+  export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 set -euf
 [ "${MVNW_VERBOSE-}" != debug ] || set -x
 
