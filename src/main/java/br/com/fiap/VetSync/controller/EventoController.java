@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/eventos")
 @RequiredArgsConstructor
-@Tag(name = "Eventos de Saúde", description = "Fluxo agendado → concluído/cancelado. Tutor escolhe um horário livre na agenda do veterinário e o evento já nasce agendado, sem etapa de confirmação.")
+@Tag(name = "Eventos de Saúde", description = "Fluxo agendado → concluído/cancelado. Tutor escolhe veterinário, data e horário; o único requisito é que o veterinário não tenha bloqueio nem outro evento agendado nesse mesmo horário.")
 public class EventoController {
 
     private final EventoService eventoService;
@@ -37,6 +38,9 @@ public class EventoController {
             @NotNull(message = "idTipoEvento é obrigatório") Long idTipoEvento,
             @NotNull(message = "idVeterinario é obrigatório") Long idVeterinario,
             @NotNull(message = "dtEvento é obrigatória") LocalDate dtEvento,
+            @NotBlank(message = "hrEvento é obrigatória")
+            @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "hrEvento deve estar no formato HH:mm, ex: 14:30")
+            String hrEvento,
             String dsObservacao
     ) {}
 
@@ -47,7 +51,9 @@ public class EventoController {
 
     public record EventoCancelarRequest(
             @NotBlank(message = "motivo do cancelamento é obrigatório") String motivo,
-            @FutureOrPresent(message = "reagendarPara não pode ser uma data passada") LocalDate reagendarPara
+            @FutureOrPresent(message = "reagendarPara não pode ser uma data passada") LocalDate reagendarPara,
+            @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "horaReagendarPara deve estar no formato HH:mm, ex: 14:30")
+            String horaReagendarPara
     ) {}
 
     public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
@@ -59,6 +65,7 @@ public class EventoController {
             String dsCategoria,
             String nmVeterinario,
             LocalDate dtEvento,
+            String hrEvento,
             String dsObservacao,
             String motivoCancelamento,
             BigDecimal vlCusto,
@@ -73,6 +80,7 @@ public class EventoController {
                 evento.getTipoEvento() != null ? evento.getTipoEvento().getDsCategoria() : null,
                 evento.getVeterinario() != null ? evento.getVeterinario().getNmVeterinario() : null,
                 evento.getDtEvento(),
+                evento.getHrEvento(),
                 evento.getDsObservacao(),
                 evento.getDsMotivoCancelamento(),
                 evento.getVlCusto(),
@@ -92,6 +100,7 @@ public class EventoController {
         }
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(request.dtEvento())
+                .hrEvento(request.hrEvento())
                 .dsObservacao(request.dsObservacao())
                 .build();
         return toResponse(eventoService.agendar(evento, request.idPet(), request.idTipoEvento(), request.idVeterinario()));
@@ -124,7 +133,7 @@ public class EventoController {
     @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorDoPet(#id, authentication)")
     @Operation(summary = "Tutor cancela um evento AGENDADO", description = "Motivo é obrigatório. Veterinário não cancela mais consultas. Se 'reagendarPara' vier preenchido, já cria um novo evento AGENDADO na nova data, no mesmo pet/tipo/veterinário.")
     public EventoCancelarResponse cancelar(@PathVariable Long id, @Valid @RequestBody EventoCancelarRequest request) {
-        EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara());
+        EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara(), request.horaReagendarPara());
         return new EventoCancelarResponse(
                 toResponse(resultado.eventoCancelado()),
                 resultado.novoEvento() != null ? toResponse(resultado.novoEvento()) : null

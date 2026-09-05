@@ -84,7 +84,7 @@ public class PlanoTratamentoService {
     }
 
 
-    public EventoSaude agendarItem(Long idItem, Long idVeterinario, LocalDate dtEvento, String dsObservacao) {
+    public EventoSaude agendarItem(Long idItem, Long idVeterinario, LocalDate dtEvento, String hrEvento, String dsObservacao) {
         PlanoItem item = buscarItemPorId(idItem);
         if (item.getDsStatus() != StatusPlanoItem.PENDENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse item já está " + item.getDsStatus());
@@ -96,6 +96,7 @@ public class PlanoTratamentoService {
 
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(dtEvento)
+                .hrEvento(hrEvento)
                 .dsObservacao(dsObservacao)
                 .build();
         EventoSaude agendado = eventoService.agendar(

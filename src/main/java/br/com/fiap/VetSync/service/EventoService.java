@@ -28,6 +28,7 @@ public class EventoService {
     private final PontosService pontosService;
     private final PlanoItemRepository planoItemRepository;
     private final PlanoTratamentoRepository planoTratamentoRepository;
+    private final AgendaService agendaService;
 
     private static final long MESES_LIMITE_ATRASO = 12;
 
@@ -47,11 +48,32 @@ public class EventoService {
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado: " + idVeterinario));
 
+        validarHorarioLivre(idVeterinario, evento.getDtEvento(), evento.getHrEvento(), null);
+
         evento.setPet(pet);
         evento.setTipoEvento(tipoEvento);
         evento.setVeterinario(vet);
         evento.setDsStatus(StatusEvento.AGENDADO);
         return eventoSaudeRepository.save(evento);
+    }
+
+
+    private void validarHorarioLivre(Long idVeterinario, LocalDate dtEvento, String hrEvento, Long idEventoIgnorar) {
+        if (hrEvento == null || hrEvento.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hrEvento é obrigatório");
+        }
+        if (agendaService.estaBloqueado(idVeterinario, dtEvento)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A agenda do veterinário está bloqueada nessa data");
+        }
+        boolean ocupado = eventoSaudeRepository.findByVeterinario_IdVeterinarioAndDtEvento(idVeterinario, dtEvento).stream()
+                .filter(e -> e.getDsStatus() == StatusEvento.AGENDADO)
+                .filter(e -> idEventoIgnorar == null || !e.getIdEvento().equals(idEventoIgnorar))
+                .anyMatch(e -> hrEvento.equals(e.getHrEvento()));
+        if (ocupado) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esse veterinário já tem um atendimento agendado nesse horário");
+        }
     }
 
     public EventoSaude buscarPorId(Long id) {
@@ -117,7 +139,7 @@ public class EventoService {
         });
     }
 
-    public ResultadoCancelamento cancelar(Long id, String motivo, LocalDate reagendarPara) {
+    public ResultadoCancelamento cancelar(Long id, String motivo, LocalDate reagendarPara, String horaReagendarPara) {
         if (motivo == null || motivo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo do cancelamento é obrigatório");
         }
@@ -126,6 +148,14 @@ public class EventoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Não é possível cancelar um evento que já está " + evento.getDsStatus());
         }
+
+        if (reagendarPara != null && (horaReagendarPara == null || horaReagendarPara.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "horaReagendarPara é obrigatória quando reagendarPara é informado");
+        }
+        if (reagendarPara != null) {
+            validarHorarioLivre(evento.getVeterinario().getIdVeterinario(), reagendarPara, horaReagendarPara, evento.getIdEvento());
+        }
+
         evento.setDsStatus(StatusEvento.CANCELADO);
         evento.setDsMotivoCancelamento(motivo);
         EventoSaude cancelado = eventoSaudeRepository.save(evento);
@@ -138,6 +168,7 @@ public class EventoService {
                     .tipoEvento(cancelado.getTipoEvento())
                     .veterinario(cancelado.getVeterinario())
                     .dtEvento(reagendarPara)
+                    .hrEvento(horaReagendarPara)
                     .dsObservacao("Reagendado do evento #" + cancelado.getIdEvento())
                     .dsStatus(StatusEvento.AGENDADO)
                     .build();

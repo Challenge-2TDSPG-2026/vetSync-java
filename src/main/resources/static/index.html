@@ -66,6 +66,17 @@
         .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; margin-bottom: 16px; }
         .card h4 { margin: 0 0 12px; font-size: 13px; color: var(--accent); font-weight: 600; }
         .field { margin-bottom: 10px; }
+        .autocomplete-wrap { position: relative; }
+        .autocomplete-lista {
+            position: absolute; z-index: 20; top: 100%; left: 0; right: 0;
+            max-height: 220px; overflow-y: auto;
+            background: #1c2030; border: 1px solid #444; border-top: none;
+            border-radius: 0 0 6px 6px;
+        }
+        .autocomplete-item { padding: 8px 10px; cursor: pointer; font-size: 13px; }
+        .autocomplete-item:hover, .autocomplete-item.ativo { background: #3a4160; }
+        .autocomplete-item .nome { color: #eee; }
+        .autocomplete-item .principio { color: #999; font-size: 11px; }
         .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
         .field input, .field select, .field textarea {
             width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
@@ -184,7 +195,7 @@
             <!-- ===================== CATALOGOS (compartilhado) ===================== -->
             <section class="panel" data-panel="catalogos">
                 <h2>Catálogos</h2>
-                <p class="desc">Referência só-leitura pra pegar os IDs usados em outros formulários (idTipoEvento, idVeterinario, idMedicamento).</p>
+                <p class="desc">Referência só-leitura. Os campos de tipo de evento, veterinário e medicamento em outros formulários já vêm preenchidos com esses nomes automaticamente — essa aba é só pra conferir os dados brutos.</p>
                 <div class="card"><h4>GET /tipos-evento</h4><button class="go secondary" onclick="apiCall('GET','/tipos-evento')">Listar</button></div>
                 <div class="card"><h4>GET /veterinarios</h4><button class="go secondary" onclick="apiCall('GET','/veterinarios')">Listar</button></div>
                 <div class="card"><h4>GET /medicamentos</h4><button class="go secondary" onclick="apiCall('GET','/medicamentos')">Listar</button></div>
@@ -238,16 +249,17 @@
             <!-- ===================== TUTOR: EVENTOS ===================== -->
             <section class="panel" data-panel="tutor-eventos">
                 <h2>Meus eventos</h2>
-                <p class="desc">Agendamento livre — escolha veterinário e horário direto, sem etapa de confirmação. Veja os IDs em Catálogos.</p>
+                <p class="desc">Escolha veterinário, data e horário. Só é bloqueado se esse veterinário já tiver outro evento agendado no mesmo horário, ou se a data estiver marcada como bloqueio de agenda dele. Veja os IDs em Catálogos.</p>
                 <div class="card">
                     <h4>POST /eventos — agendar</h4>
                     <div class="row">
                         <div class="field"><label>idPet</label><input id="ev-idpet" type="number"></div>
-                        <div class="field"><label>idTipoEvento</label><input id="ev-idtipo" type="number"></div>
+                        <div class="field"><label>Tipo de evento</label><select id="ev-idtipo" class="cat-select" data-cat="tiposEvento"><option value="">carregando…</option></select></div>
                     </div>
                     <div class="row">
-                        <div class="field"><label>idVeterinario</label><input id="ev-idvet" type="number"></div>
+                        <div class="field"><label>Veterinário</label><select id="ev-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                         <div class="field"><label>dtEvento</label><input id="ev-data" type="date"></div>
+                        <div class="field"><label>hrEvento</label><input id="ev-hora" type="time"></div>
                     </div>
                     <div class="field"><label>dsObservacao</label><input id="ev-obs"></div>
                     <button class="go" onclick="eventoAgendar()">Agendar</button>
@@ -264,6 +276,7 @@
                     <div class="row">
                         <div class="field"><label>motivo (obrigatório)</label><input id="ev-cancelar-motivo"></div>
                         <div class="field"><label>reagendarPara (opcional)</label><input id="ev-cancelar-nova-data" type="date"></div>
+                        <div class="field"><label>horaReagendarPara</label><input id="ev-cancelar-nova-hora" type="time"></div>
                     </div>
                     <button class="go" onclick="eventoCancelar()">Cancelar</button>
                 </div>
@@ -290,8 +303,9 @@
                     <h4>PATCH /planos/itens/{idItem}/agendar</h4>
                     <div class="field"><label>idItem</label><input id="pl-item-id" type="number"></div>
                     <div class="row">
-                        <div class="field"><label>idVeterinario</label><input id="pl-item-vet" type="number"></div>
+                        <div class="field"><label>Veterinário</label><select id="pl-item-vet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                         <div class="field"><label>dtEvento</label><input id="pl-item-data" type="date"></div>
+                        <div class="field"><label>hrEvento</label><input id="pl-item-hora" type="time"></div>
                     </div>
                     <div class="field"><label>dsObservacao</label><input id="pl-item-obs"></div>
                     <button class="go" onclick="planoAgendarItem()">Agendar item</button>
@@ -331,10 +345,10 @@
             <!-- ===================== VET: AGENDA ===================== -->
             <section class="panel" data-panel="vet-agenda">
                 <h2>Minha agenda</h2>
-                <p class="desc">idVeterinario é o seu próprio ID — confira em "Meu perfil" ou no GET /auth/me.</p>
+                <p class="desc">Escolha seu próprio nome na lista (você só tem permissão de mexer na própria agenda).</p>
                 <div class="card">
                     <h4>GET /veterinarios/{id}/disponibilidade &nbsp;·&nbsp; POST</h4>
-                    <div class="field"><label>idVeterinario</label><input id="disp-idvet" type="number"></div>
+                    <div class="field"><label>Veterinário</label><select id="disp-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                     <button class="go secondary" onclick="apiCall('GET',`/veterinarios/${val('disp-idvet')}/disponibilidade`)">Listar</button>
                     <div class="row" style="margin-top:10px;">
                         <div class="field"><label>nrDiaSemana (1=seg...7=dom)</label><input id="disp-dia" type="number" min="1" max="7"></div>
@@ -346,14 +360,14 @@
                 <div class="card">
                     <h4>DELETE /veterinarios/{id}/disponibilidade/{idDisponibilidade}</h4>
                     <div class="row">
-                        <div class="field"><label>idVeterinario</label><input id="disp-del-idvet" type="number"></div>
+                        <div class="field"><label>Veterinário</label><select id="disp-del-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                         <div class="field"><label>idDisponibilidade</label><input id="disp-del-id" type="number"></div>
                     </div>
                     <button class="go danger" onclick="apiCall('DELETE',`/veterinarios/${val('disp-del-idvet')}/disponibilidade/${val('disp-del-id')}`)">Remover</button>
                 </div>
                 <div class="card">
                     <h4>GET /veterinarios/{id}/bloqueios &nbsp;·&nbsp; POST</h4>
-                    <div class="field"><label>idVeterinario</label><input id="bloq-idvet" type="number"></div>
+                    <div class="field"><label>Veterinário</label><select id="bloq-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                     <button class="go secondary" onclick="apiCall('GET',`/veterinarios/${val('bloq-idvet')}/bloqueios`)">Listar</button>
                     <div class="row" style="margin-top:10px;">
                         <div class="field"><label>dtInicio</label><input id="bloq-inicio" type="date"></div>
@@ -365,7 +379,7 @@
                 <div class="card">
                     <h4>DELETE /veterinarios/{id}/bloqueios/{idBloqueio}</h4>
                     <div class="row">
-                        <div class="field"><label>idVeterinario</label><input id="bloq-del-idvet" type="number"></div>
+                        <div class="field"><label>Veterinário</label><select id="bloq-del-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
                         <div class="field"><label>idBloqueio</label><input id="bloq-del-id" type="number"></div>
                     </div>
                     <button class="go danger" onclick="apiCall('DELETE',`/veterinarios/${val('bloq-del-idvet')}/bloqueios/${val('bloq-del-id')}`)">Remover</button>
@@ -394,7 +408,12 @@
                     <h4>POST /prescricoes — solicitar</h4>
                     <div class="row">
                         <div class="field"><label>idEvento (evento sob sua responsabilidade)</label><input id="pr-idevento" type="number"></div>
-                        <div class="field"><label>idMedicamento</label><input id="pr-idmed" type="number"></div>
+                        <div class="field autocomplete-wrap">
+                            <label>Medicamento</label>
+                            <input type="text" id="pr-idmed-busca" placeholder="Digite pra buscar…" autocomplete="off">
+                            <input type="hidden" id="pr-idmed">
+                            <div id="pr-idmed-lista" class="autocomplete-lista" hidden></div>
+                        </div>
                     </div>
                     <div class="field"><label>dsPosologia</label><input id="pr-posologia"></div>
                     <div class="row">
@@ -593,6 +612,83 @@
 
     document.getElementById('origin-label').textContent = window.location.origin;
 
+    // ===== catálogos (preenchem os <select> de tipo de evento / veterinário / medicamento) =====
+    const CATALOGOS = {
+        tiposEvento: { path: '/tipos-evento', valueKey: 'idTipoEvento', labelFn: t => t.nmTipoEvento },
+        veterinarios: { path: '/veterinarios', valueKey: 'idVeterinario', labelFn: v => v.nmVeterinario },
+        medicamentos: { path: '/medicamentos', valueKey: 'idMedicamento', labelFn: m => m.nmMedicamento },
+    };
+
+    async function carregarCatalogos() {
+        for (const [nome, cfg] of Object.entries(CATALOGOS)) {
+            const selects = document.querySelectorAll(`select.cat-select[data-cat="${nome}"]`);
+            const precisaBuscar = selects.length > 0 || nome === 'medicamentos';
+            if (!precisaBuscar) continue;
+            try {
+                const res = await fetch(cfg.path, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+                if (!res.ok) throw new Error('status ' + res.status);
+                const lista = await res.json();
+                lista.sort((a, b) => cfg.labelFn(a).localeCompare(cfg.labelFn(b), 'pt-BR'));
+                selects.forEach(sel => {
+                    const atual = sel.value;
+                    sel.innerHTML = '<option value="">selecione…</option>' +
+                        lista.map(item => `<option value="${item[cfg.valueKey]}">${cfg.labelFn(item)} — #${item[cfg.valueKey]}</option>`).join('');
+                    if (atual && lista.some(item => String(item[cfg.valueKey]) === atual)) sel.value = atual;
+                });
+                if (nome === 'medicamentos') {
+                    MEDICAMENTOS_CACHE = lista;
+                }
+            } catch (e) {
+                selects.forEach(sel => { sel.innerHTML = '<option value="">erro ao carregar — use a aba Catálogos</option>'; });
+                if (nome === 'medicamentos') MEDICAMENTOS_CACHE = [];
+            }
+        }
+    }
+
+    // ===== autocomplete de medicamento (campo de texto com sugestões, ordenado A-Z) =====
+    let MEDICAMENTOS_CACHE = [];
+
+    function configurarAutocompleteMedicamento() {
+        const input = document.getElementById('pr-idmed-busca');
+        const hidden = document.getElementById('pr-idmed');
+        const lista = document.getElementById('pr-idmed-lista');
+        if (!input || !hidden || !lista) return;
+
+        function renderizar(filtro) {
+            const termo = filtro.trim().toLowerCase();
+            const itens = MEDICAMENTOS_CACHE.filter(m => m.nmMedicamento.toLowerCase().includes(termo));
+            if (itens.length === 0) {
+                lista.innerHTML = MEDICAMENTOS_CACHE.length === 0
+                    ? '<div class="autocomplete-item">nenhum medicamento cadastrado ainda — use a aba Medicamentos</div>'
+                    : '<div class="autocomplete-item">nenhum resultado</div>';
+            } else {
+                lista.innerHTML = itens.map(m => `
+                    <div class="autocomplete-item" data-id="${m.idMedicamento}" data-nome="${m.nmMedicamento.replace(/"/g, '&quot;')}">
+                        <div class="nome">${m.nmMedicamento}</div>
+                        <div class="principio">${m.dsPrincipio || ''} — #${m.idMedicamento}</div>
+                    </div>`).join('');
+            }
+            lista.hidden = false;
+        }
+
+        input.addEventListener('focus', () => renderizar(input.value));
+        input.addEventListener('input', () => {
+            hidden.value = ''; // texto mudou, invalida seleção anterior até escolher de novo
+            renderizar(input.value);
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => { lista.hidden = true; }, 150); // delay pra permitir o clique no item
+        });
+        lista.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('.autocomplete-item[data-id]');
+            if (!item) return;
+            hidden.value = item.dataset.id;
+            input.value = item.dataset.nome;
+            lista.hidden = true;
+        });
+    }
+    configurarAutocompleteMedicamento();
+
     // ===== navegação e visibilidade por perfil =====
     const tabs = Array.from(document.querySelectorAll('nav .tab'));
 
@@ -667,6 +763,7 @@
             who.textContent = '';
         }
         applyRoleVisibility();
+        carregarCatalogos();
     }
     document.getElementById('logout-btn').onclick = async () => {
         if (token) await apiCall('POST', '/auth/logout');
@@ -718,14 +815,14 @@
     function eventoAgendar() {
         apiCall('POST', '/eventos', {
             idPet: num('ev-idpet'), idTipoEvento: num('ev-idtipo'),
-            idVeterinario: num('ev-idvet'), dtEvento: val('ev-data'), dsObservacao: val('ev-obs'),
+            idVeterinario: num('ev-idvet'), dtEvento: val('ev-data'), hrEvento: val('ev-hora'), dsObservacao: val('ev-obs'),
         });
     }
     function eventoConcluir() {
         apiCall('PATCH', `/eventos/${val('ev-concluir-id')}/concluir`, { dsObservacao: val('ev-concluir-obs'), vlCusto: num('ev-concluir-custo') });
     }
     function eventoCancelar() {
-        apiCall('PATCH', `/eventos/${val('ev-cancelar-id')}/cancelar`, { motivo: val('ev-cancelar-motivo'), reagendarPara: val('ev-cancelar-nova-data') });
+        apiCall('PATCH', `/eventos/${val('ev-cancelar-id')}/cancelar`, { motivo: val('ev-cancelar-motivo'), reagendarPara: val('ev-cancelar-nova-data'), horaReagendarPara: val('ev-cancelar-nova-hora') });
     }
 
     // ===== prescricoes =====
@@ -745,7 +842,7 @@
         apiCall('POST', '/planos', { idPet: num('pl-idpet'), nrPontosBonus: num('pl-bonus'), idsTipoEvento: tipos });
     }
     function planoAgendarItem() {
-        apiCall('PATCH', `/planos/itens/${val('pl-item-id')}/agendar`, { idVeterinario: num('pl-item-vet'), dtEvento: val('pl-item-data'), dsObservacao: val('pl-item-obs') });
+        apiCall('PATCH', `/planos/itens/${val('pl-item-id')}/agendar`, { idVeterinario: num('pl-item-vet'), dtEvento: val('pl-item-data'), hrEvento: val('pl-item-hora'), dsObservacao: val('pl-item-obs') });
     }
 
     // ===== medicamentos =====

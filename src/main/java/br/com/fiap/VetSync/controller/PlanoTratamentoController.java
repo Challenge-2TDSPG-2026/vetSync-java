@@ -9,8 +9,10 @@ import br.com.fiap.VetSync.service.VeterinarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,11 +41,14 @@ public class PlanoTratamentoController {
     public record PlanoItemAgendarRequest(
             @NotNull(message = "idVeterinario é obrigatório") Long idVeterinario,
             @NotNull(message = "dtEvento é obrigatória") LocalDate dtEvento,
+            @NotBlank(message = "hrEvento é obrigatória")
+            @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "hrEvento deve estar no formato HH:mm, ex: 14:30")
+            String hrEvento,
             String dsObservacao
     ) {}
 
     public record PlanoItemResponse(
-            Long idItem, Integer nrOrdem, String nmTipoEvento, String status, Long idEvento, LocalDate dtEvento
+            Long idItem, Integer nrOrdem, String nmTipoEvento, String status, Long idEvento, LocalDate dtEvento, String hrEvento
     ) {}
 
     public record PlanoTratamentoResponse(
@@ -60,7 +65,8 @@ public class PlanoTratamentoController {
                 item.getTipoEvento() != null ? item.getTipoEvento().getNmTipoEvento() : null,
                 item.getDsStatus().name(),
                 evento != null ? evento.getIdEvento() : null,
-                evento != null ? evento.getDtEvento() : null
+                evento != null ? evento.getDtEvento() : null,
+                evento != null ? evento.getHrEvento() : null
         );
     }
 
@@ -111,7 +117,7 @@ public class PlanoTratamentoController {
     @Operation(summary = "Tutor agenda o próximo item pendente do plano",
             description = "Escolhe só veterinário e horário livre — o tipo de evento e o pet já vêm do item do plano.")
     public PlanoItemResponse agendarItem(@PathVariable Long idItem, @Valid @RequestBody PlanoItemAgendarRequest request) {
-        planoTratamentoService.agendarItem(idItem, request.idVeterinario(), request.dtEvento(), request.dsObservacao());
+        planoTratamentoService.agendarItem(idItem, request.idVeterinario(), request.dtEvento(), request.hrEvento(), request.dsObservacao());
         return toResponse(planoTratamentoService.buscarItemPorId(idItem));
     }
 }

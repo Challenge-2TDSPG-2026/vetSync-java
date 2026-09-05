@@ -36,6 +36,9 @@ public class EventoSaude {
     @Column(name = "dt_evento", nullable = false)
     private LocalDate dtEvento;
 
+    @Column(name = "hr_evento", length = 5)
+    private String hrEvento;
+
     @Column(name = "ds_observacao", length = 500)
     private String dsObservacao;
 

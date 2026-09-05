@@ -21,7 +21,7 @@ public class AgendaService {
     private final BloqueioAgendaRepository bloqueioAgendaRepository;
     private final VeterinarioService veterinarioService;
 
-    // ===== Disponibilidade (horarios fixos de atendimento) =====
+
 
     public Disponibilidade adicionarDisponibilidade(Long idVeterinario, Integer nrDiaSemana, String hrInicio, String hrFim) {
         if (nrDiaSemana == null || nrDiaSemana < 1 || nrDiaSemana > 7) {
@@ -52,7 +52,6 @@ public class AgendaService {
         disponibilidadeRepository.delete(disponibilidade);
     }
 
-    // ===== Bloqueios (ferias, compromissos, indisponibilidade pontual) =====
 
     public BloqueioAgenda adicionarBloqueio(Long idVeterinario, LocalDate dtInicio, LocalDate dtFim, String dsMotivo) {
         if (dtInicio == null || dtFim == null || dtFim.isBefore(dtInicio)) {
@@ -84,5 +83,19 @@ public class AgendaService {
         if (!idVeterinarioDoRegistro.equals(idVeterinarioDaUrl)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro não pertence a este veterinário");
         }
+    }
+
+
+    public boolean estaDentroDaDisponibilidade(Long idVeterinario, LocalDate data, String hora) {
+        int diaSemana = data.getDayOfWeek().getValue(); // 1=segunda ... 7=domingo, igual ao nrDiaSemana
+        return disponibilidadeRepository.findByVeterinario_IdVeterinario(idVeterinario).stream()
+                .filter(d -> d.getNrDiaSemana().equals(diaSemana))
+                .anyMatch(d -> hora.compareTo(d.getHrInicio()) >= 0 && hora.compareTo(d.getHrFim()) < 0);
+    }
+
+
+    public boolean estaBloqueado(Long idVeterinario, LocalDate data) {
+        return bloqueioAgendaRepository.findByVeterinario_IdVeterinario(idVeterinario).stream()
+                .anyMatch(b -> !data.isBefore(b.getDtInicio()) && !data.isAfter(b.getDtFim()));
     }
 }
