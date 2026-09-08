@@ -1,11 +1,11 @@
-# 🐾 JornadaPet
+# VetSync
 
-> **API REST para continuidade do cuidado e engajamento na jornada de saúde do pet**  
+> **API REST + console web para continuidade do cuidado e engajamento na jornada de saúde do pet**
 > FIAP Challenge 2026 — Parceria com **Clyvo Vet** | Java Advanced | 2º Ano ADS
 
 ---
 
-## 👥 Integrantes
+## Integrantes
 
 | Nome | RM |
 |---|---|
@@ -15,440 +15,458 @@
 
 ---
 
-## 📋 Descrição do Projeto
+## Descrição do projeto
 
-O **JornadaPet** é uma API backend desenvolvida em **Spring Boot** que resolve um problema real identificado em parceria com a **Clyvo Vet**: tutores de pets frequentemente esquecem ou negligenciam eventos preventivos de saúde — vacinas, vermifugações, consultas e banhos — o que resulta em visitas de emergência evitáveis e agravamento de condições tratáveis.
+O **VetSync** é uma API backend em **Spring Boot** que resolve um problema real identificado em parceria com a **Clyvo Vet**: tutores de pets esquecem ou negligenciam eventos preventivos de saúde (vacinas, vermifugações, consultas, banhos), o que gera visitas de emergência evitáveis e agrava condições tratáveis.
 
-A aplicação oferece:
+A aplicação cobre três perfis de usuário — **Tutor**, **Veterinário** e **Admin** — e oferece:
 
-- **Cadastro e gestão de tutores e seus pets** com perfil completo (espécie, raça, peso, idade calculada automaticamente)
-- **Jornada contínua de saúde**: registro e acompanhamento de eventos (vacinas, vermifugações, banhos, tosas, check-ups, consultas, cirurgias, medicamentos)
-- **Alertas automáticos de status**: eventos atrasados são detectados e sinalizados automaticamente ao consultar
-- **Sugestão de eventos iniciais** ao cadastrar um novo pet, baseada na faixa etária (filhote vs. adulto)
-- **Autenticação JWT** para acesso seguro aos dados
-- **Frontend integrado** (API Tester) servido pelo próprio Spring Boot para facilitar testes
+- **Cadastro e gestão de pets e tutores**, com espécie, raça e idade calculada automaticamente.
+- **Agendamento de eventos de saúde** (vacina, consulta, banho, cirurgia etc.) com validação de conflito de horário e de bloqueios de agenda do veterinário.
+- **Conclusão e cancelamento de eventos**, com reagendamento automático opcional e histórico de motivo de cancelamento.
+- **Planos de tratamento**: o veterinário define uma sequência de eventos futuros para o pet; o tutor agenda um item de cada vez e recebe um bônus de pontos ao concluir todos em ordem.
+- **Prescrição de medicamentos**: o veterinário solicita, o admin libera ou nega, e o tutor é avisado por e-mail quando aprovado.
+- **Programa de pontos e recompensas**: eventos concluídos e bônus de plano geram pontos (que ficam pendentes até o admin liberar); o tutor troca pontos por recompensas no catálogo, validadas por um veterinário.
+- **Agenda do veterinário**: horários fixos de disponibilidade por dia da semana e bloqueios pontuais (férias, compromissos).
+- **Autenticação JWT** stateless com autorização granular por perfil e por dono do recurso.
+- **Console web integrado** (API tester), servido pelo próprio Spring Boot, para testar todos os fluxos sem precisar do Postman.
 
 ---
 
-## 💼 Benefícios para o Negócio
+## Benefícios para o negócio
 
 | Benefício | Impacto |
 |---|---|
 | Redução de emergências veterinárias | Tutores recebem alertas de eventos pendentes/atrasados, antecipando cuidados |
-| Fidelização do cliente | A plataforma cria um vínculo contínuo entre tutor, pet e clínica |
-| Histórico clínico centralizado | Todos os eventos de saúde do pet ficam registrados e consultáveis |
-| Escalabilidade da solução | Arquitetura REST + Oracle suporta crescimento da base de dados |
-| Redução de churn | Engajamento preventivo aumenta a frequência de visitas planejadas |
-| Diferencial competitivo | Clyvo Vet entra no mercado brasileiro com solução digital de acompanhamento |
+| Fidelização do cliente | Programa de pontos e recompensas cria vínculo contínuo entre tutor, pet e clínica |
+| Adesão a tratamentos longos | Planos de tratamento guiam o tutor por uma sequência de cuidados, com bônus ao concluir |
+| Histórico clínico centralizado | Eventos, prescrições e custos ficam registrados e consultáveis |
+| Escalabilidade da solução | Arquitetura REST + Oracle + Flyway suporta crescimento e evolução do schema |
+| Diferencial competitivo | Clyvo Vet entra no mercado digital com solução de acompanhamento contínuo |
 
 ---
 
-## 🏗️ Desenho Macro da Arquitetura
+## Arquitetura
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLIENTE / FRONTEND                        │
-│         (Postman · API Tester embutido · Apps futuros)          │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ HTTP/REST (JSON)
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    SPRING BOOT APPLICATION                       │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   Security Layer (JWT)                   │   │
-│  │         JwtFilter → TutorUserDetailsService              │   │
-│  └──────────────────────┬──────────────────────────────────┘   │
-│                          │                                       │
-│  ┌───────────┐  ┌────────┴───────┐  ┌────────────────────────┐ │
-│  │AuthControl│  │TutorController │  │  PetController         │ │
-│  │  /auth/** │  │  /tutores/**   │  │  /pets/**              │ │
-│  └─────┬─────┘  └───────┬────────┘  └──────────┬─────────────┘ │
-│        │                │                        │               │
-│        │         ┌──────▼──────┐        ┌───────▼─────────────┐│
-│        │         │TutorService │        │PetService           ││
-│        │         │@Cacheable   │        │EventoService        ││
-│        │         └──────┬──────┘        └───────┬─────────────┘│
-│        │                │                        │               │
-│  ┌─────▼────────────────▼────────────────────────▼───────────┐ │
-│  │               Spring Data JPA / Repositories               │ │
-│  │    TutorRepository · PetRepository · EventoSaudeRepository │ │
-│  └────────────────────────────┬───────────────────────────────┘ │
-└───────────────────────────────┼─────────────────────────────────┘
-                                │ JDBC (ojdbc11)
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ORACLE XE 21c (Docker)                        │
-│          Schema: APP_USER · DB: XEPDB1 · Port: 1521             │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------+
+|                          CLIENTE / FRONTEND                           |
+|        Console web embutido (/index.html) - Postman - Swagger UI      |
++-------------------------------------+-----------------------------------+
+                                      | HTTP/REST (JSON)
+                                      v
++-----------------------------------------------------------------------+
+|                        SPRING BOOT APPLICATION                        |
+|  +-------------------------------------------------------------------+|
+|  |            Security Layer - JwtFilter + Spring Security           ||
+|  |    AppUserDetailsService (busca em Tutor/Veterinario/Admin)        ||
+|  |    @PreAuthorize por role + Security beans de posse do recurso     ||
+|  +---------------------------------+-----------------------------------+|
+|                                    |                                    |
+|  +----------+  +-----------+  +---v-------+  +-----------+  +----------+|
+|  |AuthCtrl  |  |PetCtrl    |  |EventoCtrl |  |PlanoCtrl  |  |Prescricao||
+|  |/auth/**  |  |/pets/**   |  |/eventos/**|  |/planos/** |  |Ctrl      ||
+|  +----+-----+  +-----+-----+  +-----+-----+  +-----+-----+  +----+-----+|
+|       |              |              |              |              |     |
+|  +----v--------------v--------------v--------------v--------------v---+|
+|  |                 Service layer - regras de negocio                  ||
+|  | EventoService - PlanoTratamentoService - PontosService -           ||
+|  | PrescricaoService - RecompensaService - AgendaService - ...        ||
+|  +---------------------------------+-----------------------------------+|
+|  +---------------------------------v-----------------------------------+|
+|  |              Spring Data JPA / Repositories                         ||
+|  +---------------------------------+-----------------------------------+|
++--------------------------------------+---------------------------------+
+                                       | JDBC (ojdbc11) - versionado por Flyway
+                                       v
++-----------------------------------------------------------------------+
+|                    ORACLE XE 21c (Docker) ou Oracle FIAP               |
+|                Schema: APP_USER - DB: XEPDB1 - Port: 1521              |
++-----------------------------------------------------------------------+
 ```
 
 ### Camadas da aplicação
 
 | Camada | Responsabilidade |
 |---|---|
-| **Controller** | Recebe requisições HTTP, valida entrada com Bean Validation, delega ao Service, retorna DTOs (Records) |
-| **Service** | Regras de negócio: cálculo de status, sugestão de eventos iniciais, cache, orquestração |
-| **Repository** | Acesso a dados via Spring Data JPA — queries por espécie, status, tutor |
-| **Security** | Filtro JWT stateless, BCrypt para senhas, Spring Security |
-| **Entity** | Tutor, Pet, EventoSaude com mapeamento JPA e validações |
+| **Controller** | Recebe requisições HTTP, valida entrada com Bean Validation, delega ao Service, retorna DTOs (Java `record`) |
+| **Service** | Regras de negócio: validação de conflito de horário, progressão de plano de tratamento, cálculo de saldo de pontos, aprovação de prescrições, envio de e-mail |
+| **Repository** | Acesso a dados via Spring Data JPA |
+| **Security** | `JwtFilter` stateless, `BCryptPasswordEncoder`, `@PreAuthorize` por perfil (`hasRole`) combinado com beans de posse do recurso (`isOwner`, `isSelf`, `isRelacionado`) |
+| **Entity** | Mapeamento JPA das tabelas `TB_*`, com enums de status e validações |
 
-### Modelo de domínio
+### Perfis de usuário
+
+| Perfil | Como é criado | O que pode fazer |
+|---|---|---|
+| **TUTOR** | Autocadastro em `POST /auth/registrar` | Gerencia os próprios pets, agenda/cancela eventos, acompanha planos de tratamento, pontos e recompensas |
+| **VETERINARIO** | Cadastrado por um ADMIN em `POST /veterinarios` (recebe CRM e senha temporária por e-mail) | Conclui eventos, prescreve planos de tratamento e medicamentos, gerencia a própria agenda, valida resgates de recompensa |
+| **ADMIN** | O primeiro é criado via `POST /admins/bootstrap` (chave secreta); os demais são criados por um ADMIN autenticado | Cadastra veterinários e outros admins, libera/nega prescrições e lançamentos de pontos pendentes |
+
+### Modelo de domínio (simplificado)
 
 ```
-Tutor (1) ──────< Pet (N) ──────< EventoSaude (N)
-  id                id                  id
-  nome              nome                tipo (enum)
-  email (unique)    especie             status (enum)
-  cpf               raca                descricao
-  telefone          peso                dataRealizacao
-  senha (BCrypt)    dataNascimento      dataProxima
-                    sexo
-                    castrado
-                    observacoes
+Tutor (1)--<Pet (N)--<EventoSaude (N)--<Prescricao (0..1)
+                |               |
+                |               +--<LancamentoPontos (0..1)
+                |
+                +--<PlanoTratamento (N)--<PlanoItem (N)--1:1 EventoSaude
+
+Tutor--<Resgate (N)>--1 Recompensa
+Veterinario (1)--<Disponibilidade (N)
+Veterinario (1)--<BloqueioAgenda (N)
+Veterinario (1)--1 Clinica
 ```
 
 ---
 
-## 🗂️ Estrutura do Projeto
+## Estrutura do projeto
 
 ```
-JornadaPet/
+vetSync-java-main/
 ├── documentos/
-│   ├── JornadaPet_Postman_Collection.json   ← Importar no Postman
-│   ├── diagrama-classes.png
-│   ├── der.png
-│   ├── cronograma-sprint1.md
-│   └── cronograma.xlsx
+│   ├── JornadaPet_Postman_Collection.json   (collection do Postman)
+│   └── cronograma-sprint1.md
 ├── src/
-│   └── main/
-│       ├── java/br/com/fiap/JornadaPet/
-│       │   ├── config/         SecurityConfig, SwaggerConfig
-│       │   ├── controller/     Auth, Tutor, Pet, Evento
-│       │   ├── entity/         Tutor, Pet, EventoSaude
-│       │   ├── repository/     Tutor, Pet, EventoSaude
-│       │   ├── service/        Tutor, Pet, Evento, Jwt
-│       │   ├── security/       JwtFilter, TutorUserDetailsService
-│       │   └── data/           MockData
-│       └── resources/
-│           ├── application.properties
-│           └── static/index.html   ← API Tester embutido
+│   ├── main/
+│   │   ├── java/br/com/fiap/VetSync/
+│   │   │   ├── config/         SecurityConfig, SwaggerConfig
+│   │   │   ├── controller/     Auth, Tutor, Pet, Evento, Plano, Prescricao,
+│   │   │   │                   Pontos, Recompensa, Medicamento, TipoEvento,
+│   │   │   │                   Veterinario, Admin
+│   │   │   ├── entity/         Tutor, Pet, EventoSaude, PlanoTratamento,
+│   │   │   │                   PlanoItem, Prescricao, LancamentoPontos,
+│   │   │   │                   Recompensa, Resgate, Veterinario, Admin, ...
+│   │   │   ├── repository/     Spring Data JPA repositories
+│   │   │   ├── service/        Regras de negócio de cada domínio
+│   │   │   ├── security/       JwtFilter, AppUserDetailsService, TokenBlacklist,
+│   │   │   │                   PetSecurity, TutorSecurity, EventoSecurity, ...
+│   │   │   ├── exception/      GlobalExceptionHandler
+│   │   │   └── data/           MockData (seed de exemplo)
+│   │   └── resources/
+│   │       ├── application.properties
+│   │       ├── db/migration/   V1 a V10 (Flyway)
+│   │       └── static/index.html   (console web / API tester embutido)
+│   └── test/                   41 arquivos: unitários, integração e segurança
 ├── Dockerfile
-├── docker-compose.yml
-├── deploy.sh                        ← Script Azure CLI
+├── docker-compose.yml           (sobe Oracle XE local + a aplicação)
+├── deploy.sh                    (script de deploy via Azure CLI)
 └── pom.xml
 ```
 
 ---
 
-## 🚀 Rotas da API
+## Stack técnica
 
-### 🔐 Auth
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `POST` | `/auth/register` | Cadastrar tutor com senha — retorna JWT | ❌ |
-| `POST` | `/auth/login` | Login — retorna JWT | ❌ |
-
-### 👤 Tutores
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/tutores` | Listar todos os tutores | ✅ |
-| `GET` | `/tutores/{id}` | Buscar tutor por ID | ✅ |
-| `POST` | `/tutores` | Cadastrar tutor (sem senha) | ✅ |
-| `PUT` | `/tutores/{id}` | Atualizar tutor | ✅ |
-| `DELETE` | `/tutores/{id}` | Deletar tutor | ✅ |
-
-### 🐾 Pets
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `POST` | `/pets/tutor/{tutorId}` | Cadastrar pet — eventos iniciais sugeridos automaticamente | ✅ |
-| `GET` | `/pets/{id}` | Buscar pet por ID (com `idadeAnos` calculada) | ✅ |
-| `GET` | `/pets/tutor/{tutorId}?page=&size=&sort=` | Listar pets do tutor (paginado) | ✅ |
-| `GET` | `/pets?especie=` | Filtrar pets por espécie | ✅ |
-| `PUT` | `/pets/{id}` | Atualizar pet | ✅ |
-| `DELETE` | `/pets/{id}` | Deletar pet | ✅ |
-
-### 🏥 Eventos de Saúde
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `POST` | `/pets/{petId}/eventos` | Registrar evento | ✅ |
-| `GET` | `/pets/{petId}/eventos?page=&size=&sort=` | Listar eventos (paginado) | ✅ |
-| `GET` | `/pets/{petId}/eventos/pendentes` | Listar pendentes (auto-atualiza ATRASADO) | ✅ |
-| `GET` | `/pets/{petId}/eventos/atrasados` | Listar atrasados | ✅ |
-| `GET` | `/pets/{petId}/eventos/{id}` | Buscar evento por ID | ✅ |
-| `PATCH` | `/pets/{petId}/eventos/{id}/realizado` | Marcar como realizado + agendar próxima data | ✅ |
-| `PUT` | `/pets/{petId}/eventos/{id}` | Atualizar evento | ✅ |
-| `DELETE` | `/pets/{petId}/eventos/{id}` | Deletar evento | ✅ |
-
-### ⚙️ Utilitários
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/actuator/health` | Health check (`{"status":"UP"}`) |
-| `GET` | `/swagger-ui.html` | Documentação interativa Swagger UI |
-| `GET` | `/h2-console` | Console H2 (apenas perfil de teste) |
-
-**Tipos de Evento disponíveis:** `VACINA` · `VERMIFUGO` · `BANHO` · `TOSA` · `CHECKUP` · `CONSULTA` · `CIRURGIA` · `MEDICAMENTO`
-
-**Status de Evento:** `PENDENTE` → `ATRASADO` (automático) → `REALIZADO`
+- **Java 17** + **Spring Boot 3.3.5**
+- Spring Web, Spring Data JPA, Spring Security, Bean Validation
+- **JWT** (`jjwt`) para autenticação stateless
+- **Flyway** (`flyway-core` + `flyway-database-oracle`) para versionamento de schema
+- **Oracle** (`ojdbc11`) em produção/dev · **H2** em modo compatibilidade Oracle nos testes
+- **Springdoc OpenAPI** (Swagger UI)
+- **Spring Mail** para notificação de senha temporária e liberação de prescrição
+- **JUnit 5 + Spring Security Test + JaCoCo** (cobertura de testes)
+- **Lombok**
 
 ---
 
-## ⚙️ Como Rodar (How to)
+## Como rodar
 
 ### Pré-requisitos
 
 - Java 17+
-- Maven 3.8+
-- Docker e Docker Compose (para rodar com Oracle)
+- Maven 3.8+ (ou use o `./mvnw` incluso)
+- Docker e Docker Compose (para subir o Oracle localmente)
 
----
+### Opção 1 — Docker Compose (recomendado)
 
-### Opção 1 — Docker Compose (recomendado, com Oracle XE)
-
-Sobe o banco Oracle XE 21c e a aplicação em containers:
+Sobe o Oracle XE 21c e a aplicação em containers, sem precisar de nenhuma instalação local de banco:
 
 ```bash
-# Clone o repositório
-git clone https://github.com/<seu-usuario>/JornadaPet-java-Sprint1.git
-cd JornadaPet-java-Sprint1
+git clone https://github.com/<seu-usuario>/vetSync-java.git
+cd vetSync-java
 
-# Sobe tudo (Oracle + App)
 docker compose up --build
 ```
 
-Aguarde o Oracle inicializar (~60s). A aplicação ficará disponível em:
+Aguarde o Oracle inicializar (o `healthcheck` do compose já garante que a aplicação só sobe depois que o banco estiver pronto — leva cerca de 60-90s na primeira vez). Ao final, o Flyway aplica todas as migrations automaticamente.
 
 | Recurso | URL |
 |---|---|
 | API | http://localhost:8080 |
-| API Tester (frontend) | http://localhost:8080/index.html |
+| Console web (frontend/API tester) | http://localhost:8080/index.html |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
-| Health Check | http://localhost:8080/actuator/health |
+| Health check | http://localhost:8080/actuator/health |
 
----
-
-### Opção 2 — Maven (sem Docker, Oracle local)
-
-Certifique-se de ter um Oracle XE rodando localmente ou ajuste as variáveis de ambiente:
+### Opção 2 — Maven, com Oracle próprio (ex: Oracle FIAP)
 
 ```bash
-export SPRING_DATASOURCE_URL=jdbc:oracle:thin:@localhost:1521/XEPDB1
-export SPRING_DATASOURCE_USERNAME=APP_USER
-export SPRING_DATASOURCE_PASSWORD=AppPassword123
+export SPRING_DATASOURCE_URL=jdbc:oracle:thin:@<host>:1521:<SID_ou_SERVICE>
+export SPRING_DATASOURCE_USERNAME=<usuario>
+export DB_PASSWORD=<senha>
 
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
----
+Por padrão, `application.properties` já aponta para o Oracle da FIAP (`oracle.fiap.com.br`) caso nenhuma variável seja exportada — ajuste conforme o ambiente disponível.
 
-### Variáveis de Ambiente
+### Variáveis de ambiente
 
-| Variável | Padrão | Descrição |
+| Variável | Padrão (compose) | Descrição |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:oracle:thin:@localhost:1521/XEPDB1` | URL do banco |
+| `SPRING_DATASOURCE_URL` | `jdbc:oracle:thin:@oracle-db:1521/XEPDB1` | URL JDBC do Oracle |
 | `SPRING_DATASOURCE_USERNAME` | `APP_USER` | Usuário do banco |
-| `SPRING_DATASOURCE_PASSWORD` | `AppPassword123` | Senha do banco |
+| `SPRING_DATASOURCE_PASSWORD` / `DB_PASSWORD` | `AppPassword123` | Senha do banco |
+| `SPRING_FLYWAY_ENABLED` | `true` | Liga/desliga o Flyway |
+| `JWT_SECRET` | chave dev incluída | Chave de assinatura do JWT (troque em produção) |
+| `ADMIN_BOOTSTRAP_KEY` | `boot-secret-dev-12345` | Chave exigida para criar o primeiro admin |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP Gmail (dev) | Envio de e-mails (senha temporária, liberação de prescrição) |
+
+> Sem configurar um servidor SMTP válido, os envios de e-mail falham silenciosamente em dev — o fluxo principal da API continua funcionando normalmente (a senha temporária também é retornada na resposta do endpoint).
 
 ---
 
-### Autenticação
+## Como acessar / dados de teste
 
-**1. Registre um tutor:**
+Ao subir a aplicação **sem** um admin ainda cadastrado, siga esta ordem:
+
+**1. Existem usuários de exemplo pré-cadastrados (seed automático em `MockData`, ativo por padrão):**
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Veterinário | `ana.vet@clyvovet.com` | `senha123` |
+| Tutor | `maria@email.com` | `senha123` |
+| Tutor | `joao@email.com` | `senha123` |
+
+O seed roda apenas se as tabelas estiverem vazias, e pode ser desligado com `app.mockdata.enabled=false`.
+
+**2. Não existe admin pré-cadastrado.** Crie o primeiro com a chave de bootstrap:
+
 ```bash
-POST /auth/register
+curl -X POST http://localhost:8080/admins/bootstrap \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Admin Geral","email":"admin@vetsync.com","chave":"boot-secret-dev-12345"}'
+```
+
+Esse endpoint só funciona **uma vez** — depois do primeiro admin, sempre retorna `409 Conflict`. A senha temporária vem na resposta.
+
+**3. Login (funciona para qualquer perfil):**
+
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"maria@email.com","senha":"senha123"}'
+```
+
+Resposta:
+```json
 {
-  "nome": "Carlos Teste",
-  "email": "carlos@email.com",
-  "senha": "senha123",
-  "telefone": "11999998888",
-  "cpf": "12345678901"
+  "token": "eyJhbGciOi...",
+  "idUsuario": 1,
+  "email": "maria@email.com",
+  "nome": "Maria Silva",
+  "perfil": "TUTOR"
 }
 ```
 
-**2. Faça login:**
+**4. Use o token nas próximas requisições:**
+
 ```bash
-POST /auth/login
-{
-  "email": "carlos@email.com",
-  "senha": "senha123"
-}
-# Retorna: { "token": "eyJ..." }
+curl http://localhost:8080/pets \
+  -H "Authorization: Bearer eyJhbGciOi..."
 ```
 
-**3. Use o token:**
-```
-Authorization: Bearer <token>
-```
-
-> Os tutores do MockData (Maria Silva, João Souza) não possuem senha. Para autenticar, use `POST /auth/register`.
+**5. Ou use o console web** em `http://localhost:8080/index.html`: faça login pela aba "Autenticação" e as demais abas são liberadas automaticamente de acordo com o perfil logado (tutor, veterinário ou admin).
 
 ---
 
-## 🐳 Dockerfile
+## Rotas da API
 
-```dockerfile
-FROM maven:3.9.9-eclipse-temurin-17 AS build
-WORKDIR /build
-COPY pom.xml pom.xml
-COPY src src
-RUN mvn clean package -DskipTests
+Rotas marcadas como **pública** não exigem token. As demais exigem `Authorization: Bearer <token>`, e as com **perfil** indicado exigem também aquele papel.
 
-FROM eclipse-temurin:17-jre
-RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
-WORKDIR /app
-COPY --from=build /build/target/*.jar app.jar
-RUN chown -R appuser:appgroup /app
-USER appuser
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-```
+### Auth (`/auth`)
 
-Build em dois estágios: compila com Maven e gera imagem mínima JRE. Roda com usuário não-root por segurança.
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/auth/registrar` | Cadastra um novo **tutor** e já retorna o token | Pública |
+| POST | `/auth/login` | Login por e-mail/senha (tutor, veterinário ou admin) | Pública |
+| POST | `/auth/logout` | Invalida o token atual (blacklist) | Autenticado |
+| GET | `/auth/me` | Dados do usuário autenticado, para restaurar sessão | Autenticado |
+
+### Tutores (`/tutores`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| GET | `/tutores` | Lista todos os tutores | VETERINARIO |
+| GET | `/tutores/{id}` | Busca tutor por ID | VETERINARIO ou o próprio tutor |
+| PUT | `/tutores/{id}` | Atualiza nome/telefone | O próprio tutor |
+| DELETE | `/tutores/{id}` | Remove o cadastro | O próprio tutor |
+
+### Pets (`/pets`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/pets` | Cadastra pet (tutor vem do token) | TUTOR |
+| GET | `/pets` | Lista os pets do tutor autenticado | TUTOR |
+| GET | `/pets/{id}` | Busca pet por ID | VETERINARIO ou dono do pet |
+| GET | `/pets/tutor/{idTutor}` | Lista pets de um tutor específico | VETERINARIO |
+| PUT | `/pets/{id}` | Atualiza dados do pet | Dono do pet |
+| DELETE | `/pets/{id}` | Remove o pet (409 se houver eventos vinculados) | Dono do pet |
+
+### Eventos de saúde (`/eventos`)
+
+Fluxo: **AGENDADO → CONCLUIDO** ou **AGENDADO → CANCELADO** (com reagendamento automático opcional).
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/eventos` | Tutor agenda evento (valida conflito de horário/bloqueio) | TUTOR |
+| GET | `/eventos` | Lista eventos do tutor ou do veterinário autenticado | Autenticado |
+| GET | `/eventos/{id}` | Busca evento por ID | Tutor dono ou vet responsável |
+| PATCH | `/eventos/{id}/concluir` | Veterinário conclui, informa custo, gera pontos e avança plano | VETERINARIO responsável |
+| PATCH | `/eventos/{id}/cancelar` | Tutor cancela (motivo obrigatório), pode reagendar direto | TUTOR dono |
+| DELETE | `/eventos/{id}` | Remove evento | Vet sempre; tutor só se AGENDADO |
+| GET | `/eventos/pet/{idPet}/gasto-total` | Soma custos de eventos CONCLUIDOS | Autenticado |
+| GET | `/eventos/pet/{idPet}/alertas` | Histórico + alerta de atraso por tipo de evento | Autenticado |
+
+### Planos de tratamento (`/planos`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/planos` | Veterinário cria plano com sequência de eventos (mín. 2 itens) | VETERINARIO |
+| GET | `/planos` | Lista planos do tutor ou do veterinário | Autenticado |
+| GET | `/planos/{id}` | Detalha plano e seus itens | Tutor dono ou vet que prescreveu |
+| PATCH | `/planos/itens/{idItem}/agendar` | Tutor agenda o próximo item pendente | TUTOR dono do item |
+
+### Prescrições (`/prescricoes`)
+
+Fluxo: **SOLICITADO → LIBERADO** ou **SOLICITADO → NEGADO**.
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/prescricoes` | Veterinário solicita medicamento para um evento | VETERINARIO |
+| GET | `/prescricoes` | Tutor vê as dos próprios pets; vet vê as suas; admin vê a fila pendente | Autenticado |
+| GET | `/prescricoes/{id}` | Busca por ID | Tutor dono, vet responsável ou admin |
+| PATCH | `/prescricoes/{id}/liberar` | Admin aprova/nega (dispara e-mail se aprovado) | ADMIN |
+
+### Pontos (`/pontos`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| GET | `/pontos` | Tutor vê seus lançamentos; admin vê a fila pendente | Autenticado |
+| PATCH | `/pontos/{id}/liberar` | Admin libera lançamento pendente (entra no saldo do tutor) | ADMIN |
+
+### Recompensas (`/recompensas`)
+
+Fluxo de resgate: **PENDENTE → VALIDADO** ou **PENDENTE → NEGADO**.
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| GET | `/recompensas` | Lista recompensas ativas do catálogo | Autenticado |
+| POST | `/recompensas` | Cadastra recompensa | VETERINARIO |
+| GET | `/recompensas/saldo` | Saldo de pontos do tutor autenticado | TUTOR |
+| PATCH | `/recompensas/{id}/resgatar` | Resgata recompensa (debita saldo, cria resgate pendente) | TUTOR |
+| GET | `/recompensas/resgates` | Tutor vê os próprios; vet vê os pendentes | Autenticado |
+| PATCH | `/recompensas/resgates/{idResgate}/validar` | Veterinário valida/nega resgate | VETERINARIO |
+
+### Medicamentos (`/medicamentos`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/medicamentos` | Cadastra medicamento no catálogo | ADMIN ou VETERINARIO |
+| GET | `/medicamentos` | Lista catálogo | Autenticado |
+| GET | `/medicamentos/{id}` | Busca por ID | Autenticado |
+| PUT | `/medicamentos/{id}` | Atualiza | ADMIN ou VETERINARIO |
+| DELETE | `/medicamentos/{id}` | Remove | ADMIN |
+
+### Tipos de evento (`/tipos-evento`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| GET | `/tipos-evento` | Lista catálogo (nome, categoria, pontos) | Autenticado |
+
+### Veterinários e agenda (`/veterinarios`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| GET | `/veterinarios` | Lista veterinários | Autenticado |
+| GET | `/veterinarios/{id}` | Busca por ID | Autenticado |
+| POST | `/veterinarios` | Cadastra veterinário (gera CRM + senha temporária por e-mail) | ADMIN |
+| PUT | `/veterinarios/{id}` | Atualiza dados | O próprio veterinário |
+| GET/POST/DELETE | `/veterinarios/{id}/disponibilidade[/{idDisponibilidade}]` | Horários fixos de atendimento por dia da semana | Leitura livre; escrita só o próprio |
+| GET/POST/DELETE | `/veterinarios/{id}/bloqueios[/{idBloqueio}]` | Bloqueios de agenda (férias, compromissos) | Leitura livre; escrita só o próprio |
+
+### Admin (`/admins`)
+
+| Método | Rota | Descrição | Acesso |
+|---|---|---|---|
+| POST | `/admins/bootstrap` | Cria o **primeiro** admin do sistema, exige `ADMIN_BOOTSTRAP_KEY` | Pública (só funciona uma vez) |
+| POST | `/admins` | Admin autenticado cria outro admin | ADMIN |
+
+### Utilitários
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/actuator/health` | Health check |
+| GET | `/swagger-ui.html` | Documentação interativa (Swagger UI) |
+| GET | `/index.html` | Console web / API tester |
 
 ---
 
-## 🐋 Docker Compose
+## Testes
 
-```yaml
-services:
-  oracle-db:
-    image: gvenzl/oracle-xe:21-slim
-    container_name: oracle-db
-    environment:
-      ORACLE_PASSWORD: "OracleRoot123"
-      APP_USER: "APP_USER"
-      APP_USER_PASSWORD: "AppPassword123"
-    volumes:
-      - oracle_data:/opt/oracle/oradata
-      - ./sql:/container-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "healthcheck.sh"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 40s
-    networks:
-      - challenge_net
+O projeto tem **41 classes de teste** cobrindo unidade, repositório, controller (`@WebMvcTest`), integração ponta-a-ponta e regras de segurança, usando H2 em memória em modo de compatibilidade Oracle (Flyway desabilitado nos testes).
 
-  jornadapet:
-    build: .
-    container_name: jornadapet-app
-    depends_on:
-      oracle-db:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: "jdbc:oracle:thin:@oracle-db:1521/XEPDB1"
-      SPRING_DATASOURCE_USERNAME: "APP_USER"
-      SPRING_DATASOURCE_PASSWORD: "AppPassword123"
-    networks:
-      - challenge_net
-
-networks:
-  challenge_net:
-    driver: bridge
-
-volumes:
-  oracle_data:
+```bash
+./mvnw test
 ```
+
+Relatório de cobertura (JaCoCo):
+
+```bash
+./mvnw test jacoco:report
+# abrir target/site/jacoco/index.html
+```
+
+Principais suítes de integração:
+- `AuthFlowIntegrationTest` — registro, login, logout e `/me`
+- `AdminBootstrapIntegrationTest` — bootstrap do primeiro admin
+- `EventoPontosRecompensaIntegrationTest` — agendar, concluir, gerar pontos, liberar, trocar por recompensa
+- `PlanoTratamentoFlowIntegrationTest` — criação de plano, agendamento sequencial dos itens, conclusão, bônus
+- `PrescricaoFlowIntegrationTest` — solicitação, liberação/negação, notificação
 
 ---
 
-## ☁️ Deploy na Azure (Script CLI)
+## Coleção Postman
 
-O script `deploy.sh` provisionou a infraestrutura Azure usada neste projeto:
+Uma collection pronta está em [`documentos/JornadaPet_Postman_Collection.json`](./documentos/JornadaPet_Postman_Collection.json) — importe no Postman e configure a variável de ambiente `token` após o login.
+
+Atenção: a collection ainda usa o nome legado `JornadaPet`; as rotas nela podem estar desatualizadas em relação à tabela acima — use a tabela de rotas deste README ou o Swagger UI (`/swagger-ui.html`) como fonte da verdade.
+
+---
+
+## Deploy
+
+O `deploy.sh` automatiza a publicação em Azure Container Apps via Azure CLI. Ajuste as variáveis de resource group, registry e nome da aplicação no topo do script antes de rodar:
 
 ```bash
-#!/usr/bin/env bash
-# Requisitos: Azure CLI instalado e autenticado (az login)
-
-RG="rg-challenge-clyvo-vet"
-LOCATION="chilecentral"
-VM="vm-wise-clyvo-dev-01"
-
-# 1. Criar Resource Group
-az group create --name "$RG" --location "$LOCATION"
-
-# 2. Criar VNet + Subnet
-az network vnet create \
-  --resource-group "$RG" --name "vnet_wise_dev" \
-  --address-prefixes 10.10.0.0/16 \
-  --subnet-name "sub_net_dev" --subnet-prefixes 10.10.1.0/24
-
-# 3. Criar NSG
-az network nsg create --resource-group "$RG" --name "nsg_portalweb_dev"
-
-# 4. Criar VM Ubuntu 22.04 (Standard_B4ls_v2)
-az vm create \
-  --resource-group "$RG" --name "$VM" \
-  --image Ubuntu2204 --size Standard_B4ls_v2 \
-  --admin-username azureuser --generate-ssh-keys \
-  --vnet-name "vnet_wise_dev" --subnet "sub_net_dev" --nsg "nsg_portalweb_dev"
-
-# 5. Abrir portas (SSH, App, Oracle)
-az vm open-port --resource-group "$RG" --name "$VM" --port 22   --priority 1000
-az vm open-port --resource-group "$RG" --name "$VM" --port 8080 --priority 1001
-az vm open-port --resource-group "$RG" --name "$VM" --port 1521 --priority 1002
-
-# 6. Instalar Docker na VM
-az vm run-command invoke \
-  --resource-group "$RG" --name "$VM" \
-  --command-id RunShellScript \
-  --scripts "sudo apt-get update && sudo apt-get install -y git curl ca-certificates && curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker azureuser"
-
-# 7. Exibir IP público da VM
-az vm show --resource-group "$RG" --name "$VM" \
-  --show-details --query publicIps --output tsv
-```
-
-**Para executar o deploy completo:**
-```bash
-chmod +x deploy.sh
-az login
 ./deploy.sh
 ```
 
-Após provisionamento, acesse a VM via SSH e suba os containers:
+Para build e execução manual da imagem:
+
 ```bash
-ssh azureuser@<IP_RETORNADO>
-git clone https://github.com/<seu-usuario>/JornadaPet-java-Sprint1.git
-cd JornadaPet-java-Sprint1
-docker compose up --build -d
+docker build -t vetsync:local .
+docker run -p 8080:8080 --env-file .env vetsync:local
 ```
 
 ---
 
-## 📁 Documentação
+## Notas finais
 
-| Arquivo | Descrição |
-|---|---|
-| [`/documentos/JornadaPet_Postman_Collection.json`](./documentos/JornadaPet_Postman_Collection.json) | Coleção completa — importe no Postman |
-| [`/documentos/diagrama-classes.png`](./documentos/diagrama-classes.png) | Diagrama de Classes (entidades, repos, services, controllers) |
-| [`/documentos/der.png`](./documentos/der.png) | DER — Diagrama Entidade-Relacionamento |
-| [`/documentos/cronograma-sprint1.md`](./documentos/cronograma-sprint1.md) | Cronograma detalhado com divisão de tarefas |
+- O schema é 100% gerenciado por **Flyway** (`src/main/resources/db/migration`) — nunca altere tabelas manualmente, crie uma nova migration (`V11__...sql`).
+- `spring.jpa.hibernate.ddl-auto=none` em produção/dev — o Hibernate nunca gera DDL fora dos testes.
+- Perfis, papéis e regras de posse (quem pode ver/editar o quê) estão centralizados em `security/*Security.java` — é o primeiro lugar a olhar para entender ou estender uma regra de autorização.
 
 ---
 
-## 🛠️ Tecnologias
-
-| Tecnologia | Versão | Uso |
-|---|---|---|
-| Java | 17 | Linguagem |
-| Spring Boot | 3.3.5 | Framework principal |
-| Spring Security | — | Autenticação JWT |
-| Spring Data JPA | — | Persistência |
-| Oracle XE | 21c | Banco de dados (produção) |
-| jjwt | 0.11.5 | Geração e validação de tokens |
-| Springdoc OpenAPI | 2.6.0 | Swagger UI |
-| Lombok | — | Redução de boilerplate |
-| Docker / Compose | — | Containerização |
-| Azure CLI | — | Provisionamento de infraestrutura |
-
----
-
-*JornadaPet — FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS — Turmas de Fevereiro*
+*VetSync — FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS*
