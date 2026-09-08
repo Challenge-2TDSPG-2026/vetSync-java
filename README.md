@@ -461,12 +461,4 @@ docker run -p 8080:8080 --env-file .env vetsync:local
 
 ---
 
-## Notas finais
-
-- O schema é 100% gerenciado por **Flyway** (`src/main/resources/db/migration`) — nunca altere tabelas manualmente, crie uma nova migration (`V11__...sql`).
-- `spring.jpa.hibernate.ddl-auto=none` em produção/dev — o Hibernate nunca gera DDL fora dos testes.
-- Perfis, papéis e regras de posse (quem pode ver/editar o quê) estão centralizados em `security/*Security.java` — é o primeiro lugar a olhar para entender ou estender uma regra de autorização.
-
----
-
 *VetSync — FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS*
