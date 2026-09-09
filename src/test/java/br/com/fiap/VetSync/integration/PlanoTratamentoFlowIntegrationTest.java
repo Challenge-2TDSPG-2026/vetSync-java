@@ -19,7 +19,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -101,7 +100,7 @@ class PlanoTratamentoFlowIntegrationTest {
         Long idItem2 = planoNode.get("itens").get(1).get("idItem").asLong();
 
         // 7. Tutor agenda item 1
-        var agendarItem1 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now(), "Dose 1");
+        var agendarItem1 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now(), "09:00", "Dose 1");
         MvcResult item1Res = mockMvc.perform(patch("/planos/itens/" + idItem1 + "/agendar")
                         .header("Authorization", "Bearer " + tutorToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +118,7 @@ class PlanoTratamentoFlowIntegrationTest {
                 .andExpect(status().isOk());
 
         // 9. Tutor agenda item 2
-        var agendarItem2 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now().plusWeeks(2), "Dose 2");
+        var agendarItem2 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now().plusWeeks(2), "10:30", "Dose 2");
         MvcResult item2Res = mockMvc.perform(patch("/planos/itens/" + idItem2 + "/agendar")
                         .header("Authorization", "Bearer " + tutorToken)
                         .contentType(MediaType.APPLICATION_JSON)

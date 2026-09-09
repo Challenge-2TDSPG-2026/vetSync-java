@@ -146,6 +146,7 @@ class EventoPontosRecompensaIntegrationTest {
                 tipoVacina.getIdTipoEvento(),
                 idVet,
                 LocalDate.now(),
+                "14:30",
                 "Vacinação do Pipoca"
         );
         MvcResult eventoRes = mockMvc.perform(post("/eventos")

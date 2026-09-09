@@ -128,12 +128,12 @@ class PlanoTratamentoControllerTest {
         when(planoTratamentoSecurity.isTutorDoItem(eq(100L), any())).thenReturn(true);
 
         TipoEvento tipo = TipoEvento.builder().nmTipoEvento("Fisio").build();
-        EventoSaude ev = EventoSaude.builder().idEvento(500L).dtEvento(LocalDate.now().plusDays(1)).build();
+        EventoSaude ev = EventoSaude.builder().idEvento(500L).dtEvento(LocalDate.now().plusDays(1)).hrEvento("14:30").build();
         PlanoItem item = PlanoItem.builder().idItem(100L).nrOrdem(1).tipoEvento(tipo).dsStatus(StatusPlanoItem.AGENDADO).evento(ev).build();
 
         when(planoTratamentoService.buscarItemPorId(100L)).thenReturn(item);
 
-        var req = new PlanoTratamentoController.PlanoItemAgendarRequest(2L, LocalDate.now().plusDays(1), "Obs");
+        var req = new PlanoTratamentoController.PlanoItemAgendarRequest(2L, LocalDate.now().plusDays(1), "14:30", "Obs");
 
         mockMvc.perform(patch("/planos/itens/100/agendar")
                         .contentType(MediaType.APPLICATION_JSON)

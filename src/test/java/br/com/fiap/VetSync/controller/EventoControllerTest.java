@@ -10,11 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -59,12 +57,13 @@ class EventoControllerTest {
                 .tipoEvento(tipo)
                 .veterinario(vet)
                 .dtEvento(LocalDate.now().plusDays(2))
+                .hrEvento("14:30")
                 .dsStatus(StatusEvento.AGENDADO)
                 .build();
 
         when(eventoService.agendar(any(), eq(1L), eq(2L), eq(3L))).thenReturn(eventoCriado);
 
-        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "Obs");
+        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
 
         mockMvc.perform(post("/eventos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,7 +83,7 @@ class EventoControllerTest {
 
         when(petService.buscarPorId(1L)).thenReturn(pet);
 
-        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "Obs");
+        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
 
         mockMvc.perform(post("/eventos")
                         .contentType(MediaType.APPLICATION_JSON)

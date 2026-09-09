@@ -103,7 +103,7 @@ class PlanoTratamentoServiceTest {
         EventoSaude eventoCriado = EventoSaude.builder().idEvento(500L).build();
         when(eventoService.agendar(any(), eq(1L), eq(5L), eq(2L))).thenReturn(eventoCriado);
 
-        EventoSaude agendado = planoTratamentoService.agendarItem(100L, 2L, LocalDate.now().plusDays(3), "Primeira dose");
+        EventoSaude agendado = planoTratamentoService.agendarItem(100L, 2L, LocalDate.now().plusDays(3), "09:00", "Primeira dose");
 
         assertThat(agendado).isNotNull();
         assertThat(item.getDsStatus()).isEqualTo(StatusPlanoItem.AGENDADO);
@@ -121,7 +121,7 @@ class PlanoTratamentoServiceTest {
 
         when(planoItemRepository.findById(100L)).thenReturn(Optional.of(item));
 
-        assertThatThrownBy(() -> planoTratamentoService.agendarItem(100L, 2L, LocalDate.now(), null))
+        assertThatThrownBy(() -> planoTratamentoService.agendarItem(100L, 2L, LocalDate.now(), "09:00", null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("já está CONCLUIDO");
     }
@@ -142,7 +142,7 @@ class PlanoTratamentoServiceTest {
 
         when(planoItemRepository.findById(100L)).thenReturn(Optional.of(item));
 
-        assertThatThrownBy(() -> planoTratamentoService.agendarItem(100L, 2L, LocalDate.now(), null))
+        assertThatThrownBy(() -> planoTratamentoService.agendarItem(100L, 2L, LocalDate.now(), "09:00", null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("não está mais em andamento");
     }
