@@ -27,7 +27,6 @@ public class PetService {
     private final EspecieRepository especieRepository;
     private final RacaRepository racaRepository;
 
-
     public Pet cadastrar(Pet pet, Long idTutor, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Tutor tutor = tutorService.buscarPorId(idTutor);
         Raca raca = resolverRaca(categoria, especieOutro, nmRaca);
@@ -85,6 +84,7 @@ public class PetService {
         Pet pet = buscarPorId(id);
         pet.setNmPet(petAtualizado.getNmPet());
         pet.setNrPesoKg(petAtualizado.getNrPesoKg());
+        pet.setDsSexo(petAtualizado.getDsSexo());
 
         if (petAtualizado.getDtNascimento() != null) {
             pet.setDtNascimento(petAtualizado.getDtNascimento());

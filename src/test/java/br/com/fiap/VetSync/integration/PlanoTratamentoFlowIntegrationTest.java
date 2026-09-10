@@ -42,7 +42,6 @@ class PlanoTratamentoFlowIntegrationTest {
     @Test
     @DisplayName("Ponta a ponta: Criação do Plano -> Agendamento de Itens -> Conclusão Sequencial -> Conclusão do Plano e Bônus")
     void fluxoPlanoTratamento() throws Exception {
-        // 1. Setup base
         Clinica clinica = clinicaRepository.save(Clinica.builder()
                 .nmClinica("Clínica Integrada")
                 .dsCnpj("55443322000188")
@@ -51,7 +50,6 @@ class PlanoTratamentoFlowIntegrationTest {
         TipoEvento t1 = tipoEventoRepository.save(TipoEvento.builder().nmTipoEvento("Dose 1").dsCategoria("TERAPEUTICO").nrPontos(10).build());
         TipoEvento t2 = tipoEventoRepository.save(TipoEvento.builder().nmTipoEvento("Dose 2").dsCategoria("TERAPEUTICO").nrPontos(10).build());
 
-        // 2. Admin bootstrap & login
         var adminReq = new AdminController.AdminBootstrapRequest("Admin P", "admin.p@vetsync.com", "boot-secret-test-key-12345");
         MvcResult adminRes = mockMvc.perform(post("/admins/bootstrap").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(adminReq))).andReturn();
         String adminPwd = objectMapper.readTree(adminRes.getResponse().getContentAsString()).get("senhaTemporaria").asText();
@@ -60,7 +58,6 @@ class PlanoTratamentoFlowIntegrationTest {
                 .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("admin.p@vetsync.com", adminPwd)))).andReturn();
         String adminToken = objectMapper.readTree(adminLogin.getResponse().getContentAsString()).get("token").asText();
 
-        // 3. Admin cria Vet
         MvcResult vetRes = mockMvc.perform(post("/veterinarios")
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -69,12 +66,10 @@ class PlanoTratamentoFlowIntegrationTest {
         Long idVet = vetNode.get("idVeterinario").asLong();
         String vetPwd = vetNode.get("senhaTemporaria").asText();
 
-        // 4. Login Vet
         MvcResult vetLogin = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("paulo.vet@vetsync.com", vetPwd)))).andReturn();
         String vetToken = objectMapper.readTree(vetLogin.getResponse().getContentAsString()).get("token").asText();
 
-        // 5. Tutor registra e cadastra Pet
         MvcResult tutorRes = mockMvc.perform(post("/auth/registrar").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new AuthController.RegistrarRequest("Tatiana", "tatiana@teste.com", "senha123", "99988811122", "11988882222")))).andReturn();
         String tutorToken = objectMapper.readTree(tutorRes.getResponse().getContentAsString()).get("token").asText();
@@ -82,10 +77,9 @@ class PlanoTratamentoFlowIntegrationTest {
         MvcResult petRes = mockMvc.perform(post("/pets")
                 .header("Authorization", "Bearer " + tutorToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new PetController.PetRequest("Nala", EspecieCategoria.GATO, null, "Siamês", LocalDate.now().minusYears(1), new BigDecimal("3.0"))))).andReturn();
+                .content(objectMapper.writeValueAsString(new PetController.PetRequest("Nala", EspecieCategoria.GATO, null, "Siamês", LocalDate.now().minusYears(1), new BigDecimal("3.0"), "F")))).andReturn();
         Long idPet = objectMapper.readTree(petRes.getResponse().getContentAsString()).get("idPet").asLong();
 
-        // 6. Vet cria Plano de Tratamento (50 pts de bônus, itens: t1 e t2)
         var planoReq = new PlanoTratamentoController.PlanoTratamentoRequest(idPet, 50, List.of(t1.getIdTipoEvento(), t2.getIdTipoEvento()));
         MvcResult planoRes = mockMvc.perform(post("/planos")
                         .header("Authorization", "Bearer " + vetToken)
@@ -99,7 +93,6 @@ class PlanoTratamentoFlowIntegrationTest {
         Long idItem1 = planoNode.get("itens").get(0).get("idItem").asLong();
         Long idItem2 = planoNode.get("itens").get(1).get("idItem").asLong();
 
-        // 7. Tutor agenda item 1
         var agendarItem1 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now(), "09:00", "Dose 1");
         MvcResult item1Res = mockMvc.perform(patch("/planos/itens/" + idItem1 + "/agendar")
                         .header("Authorization", "Bearer " + tutorToken)
@@ -110,14 +103,12 @@ class PlanoTratamentoFlowIntegrationTest {
                 .andReturn();
         Long idEvento1 = objectMapper.readTree(item1Res.getResponse().getContentAsString()).get("idEvento").asLong();
 
-        // 8. Vet conclui o evento do item 1
         mockMvc.perform(patch("/eventos/" + idEvento1 + "/concluir")
                         .header("Authorization", "Bearer " + vetToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new EventoController.EventoConcluirRequest("Dose 1 aplicada", BigDecimal.ZERO))))
                 .andExpect(status().isOk());
 
-        // 9. Tutor agenda item 2
         var agendarItem2 = new PlanoTratamentoController.PlanoItemAgendarRequest(idVet, LocalDate.now().plusWeeks(2), "10:30", "Dose 2");
         MvcResult item2Res = mockMvc.perform(patch("/planos/itens/" + idItem2 + "/agendar")
                         .header("Authorization", "Bearer " + tutorToken)
@@ -128,14 +119,12 @@ class PlanoTratamentoFlowIntegrationTest {
                 .andReturn();
         Long idEvento2 = objectMapper.readTree(item2Res.getResponse().getContentAsString()).get("idEvento").asLong();
 
-        // 10. Vet conclui o evento do item 2 (último item)
         mockMvc.perform(patch("/eventos/" + idEvento2 + "/concluir")
                         .header("Authorization", "Bearer " + vetToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new EventoController.EventoConcluirRequest("Dose 2 aplicada", BigDecimal.ZERO))))
                 .andExpect(status().isOk());
 
-        // 11. Verifica que o Plano agora está CONCLUIDO!
         mockMvc.perform(get("/planos/" + idPlano)
                         .header("Authorization", "Bearer " + tutorToken))
                 .andExpect(status().isOk())

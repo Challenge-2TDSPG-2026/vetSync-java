@@ -60,7 +60,7 @@ class PetControllerTest {
         when(petService.cadastrar(any(), eq(1L), eq(EspecieCategoria.CAO), any(), eq("Pug"))).thenReturn(petSalvo);
         when(petService.calcularIdade(petSalvo)).thenReturn(2);
 
-        var req = new PetController.PetRequest("Frank", EspecieCategoria.CAO, null, "Pug", LocalDate.now().minusYears(2), new BigDecimal("7.5"));
+        var req = new PetController.PetRequest("Frank", EspecieCategoria.CAO, null, "Pug", LocalDate.now().minusYears(2), new BigDecimal("7.5"), "M");
 
         mockMvc.perform(post("/pets")
                         .contentType(MediaType.APPLICATION_JSON)

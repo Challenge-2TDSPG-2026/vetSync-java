@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,7 +44,11 @@ public class PetController {
 
             @NotNull(message = "Data de nascimento é obrigatória")
             LocalDate dtNascimento,
-            BigDecimal peso
+            BigDecimal peso,
+
+            @NotBlank(message = "Sexo é obrigatório")
+            @Pattern(regexp = "^[MF]$", message = "Sexo deve ser M ou F")
+            String sexo
     ) {}
 
     public record PetResponse(
@@ -54,6 +59,7 @@ public class PetController {
             LocalDate dtNascimento,
             int idadeAnos,
             BigDecimal peso,
+            String sexo,
             Long idTutor
     ) {}
 
@@ -68,10 +74,10 @@ public class PetController {
                 pet.getDtNascimento(),
                 idade,
                 pet.getNrPesoKg(),
+                pet.getDsSexo(),
                 pet.getTutor() != null ? pet.getTutor().getIdTutor() : null
         );
     }
-
 
     private Long idTutorAutenticado(Authentication authentication) {
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
@@ -82,12 +88,13 @@ public class PetController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Cadastrar pet", description = "O tutor vem do token. especie: CAO, GATO, AVE ou OUTRO.")
+    @Operation(summary = "Cadastrar pet", description = "O tutor vem do token. especie: CAO, GATO, AVE ou OUTRO. sexo: M ou F.")
     public PetResponse cadastrar(Authentication authentication, @RequestBody @Valid PetRequest request) {
         Pet pet = Pet.builder()
                 .nmPet(request.nmPet())
                 .dtNascimento(request.dtNascimento())
                 .nrPesoKg(request.peso())
+                .dsSexo(request.sexo())
                 .build();
         Long idTutor = idTutorAutenticado(authentication);
         return toResponse(petService.cadastrar(pet, idTutor, request.especie(), request.especieOutro(), request.raca()));
@@ -121,12 +128,13 @@ public class PetController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
-    @Operation(summary = "Atualizar pet (nome, peso, data de nascimento, raça/espécie). Só o tutor dono do pet.")
+    @Operation(summary = "Atualizar pet (nome, peso, data de nascimento, sexo, raça/espécie). Só o tutor dono do pet.")
     public PetResponse atualizar(@PathVariable Long id, @RequestBody @Valid PetRequest request) {
         Pet petAtualizado = Pet.builder()
                 .nmPet(request.nmPet())
                 .nrPesoKg(request.peso())
                 .dtNascimento(request.dtNascimento())
+                .dsSexo(request.sexo())
                 .build();
         return toResponse(petService.atualizar(id, petAtualizado, request.especie(), request.especieOutro(), request.raca()));
     }

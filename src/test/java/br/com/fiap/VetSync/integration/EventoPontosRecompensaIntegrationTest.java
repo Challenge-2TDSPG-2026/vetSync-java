@@ -42,7 +42,6 @@ class EventoPontosRecompensaIntegrationTest {
     @Test
     @DisplayName("Ponta a ponta: Cadastro -> Pet -> Agendamento -> Conclusão -> Liberação de Pontos -> Saldo -> Resgate -> Validação")
     void fluxoCompletoEventoPontosRecompensa() throws Exception {
-        // 1. Setup inicial de clínica e tipo de evento
         Clinica clinica = clinicaRepository.save(Clinica.builder()
                 .nmClinica("Clínica VetSync SP")
                 .dsCnpj("11222333000199")
@@ -56,7 +55,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .nrPontos(30)
                 .build());
 
-        // 2. Bootstrap de Admin
         var adminReq = new AdminController.AdminBootstrapRequest("Admin Boss", "boss@vetsync.com", "boot-secret-test-key-12345");
         MvcResult adminRes = mockMvc.perform(post("/admins/bootstrap")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,7 +63,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String adminPwd = objectMapper.readTree(adminRes.getResponse().getContentAsString()).get("senhaTemporaria").asText();
 
-        // 3. Login do Admin
         MvcResult adminLoginRes = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("boss@vetsync.com", adminPwd))))
@@ -73,7 +70,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String adminToken = objectMapper.readTree(adminLoginRes.getResponse().getContentAsString()).get("token").asText();
 
-        // 4. Admin cadastra um novo Veterinário
         var vetReq = new VeterinarioController.VeterinarioRequest("Dr. Gabriel", "gabriel.vet@vetsync.com", clinica.getIdClinica());
         MvcResult vetRes = mockMvc.perform(post("/veterinarios")
                         .header("Authorization", "Bearer " + adminToken)
@@ -85,7 +81,6 @@ class EventoPontosRecompensaIntegrationTest {
         Long idVet = vetNode.get("idVeterinario").asLong();
         String vetPwd = vetNode.get("senhaTemporaria").asText();
 
-        // 5. Login do Veterinário
         MvcResult vetLoginRes = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("gabriel.vet@vetsync.com", vetPwd))))
@@ -93,7 +88,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String vetToken = objectMapper.readTree(vetLoginRes.getResponse().getContentAsString()).get("token").asText();
 
-        // 6. Veterinário cadastra uma Recompensa no catálogo (Custo: 30 pontos)
         var recompensaReq = new RecompensaController.RecompensaRequest(
                 "Guia Passeio",
                 "Guia de alta durabilidade",
@@ -108,7 +102,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         Long idRecompensa = objectMapper.readTree(recRes.getResponse().getContentAsString()).get("idRecompensa").asLong();
 
-        // 7. Tutor se registra
         var tutorReq = new AuthController.RegistrarRequest(
                 "Camila Silva",
                 "camila@teste.com",
@@ -123,14 +116,14 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String tutorToken = objectMapper.readTree(tutorRes.getResponse().getContentAsString()).get("token").asText();
 
-        // 8. Tutor cadastra um Pet
         var petReq = new PetController.PetRequest(
                 "Pipoca",
                 EspecieCategoria.CAO,
                 null,
                 "Golden Retriever",
                 LocalDate.now().minusYears(2),
-                new BigDecimal("22.5")
+                new BigDecimal("22.5"),
+                "M"
         );
         MvcResult petRes = mockMvc.perform(post("/pets")
                         .header("Authorization", "Bearer " + tutorToken)
@@ -140,7 +133,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         Long idPet = objectMapper.readTree(petRes.getResponse().getContentAsString()).get("idPet").asLong();
 
-        // 9. Tutor agenda Evento de Vacina
         var agendarReq = new EventoController.EventoAgendarRequest(
                 idPet,
                 tipoVacina.getIdTipoEvento(),
@@ -157,7 +149,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         Long idEvento = objectMapper.readTree(eventoRes.getResponse().getContentAsString()).get("idEvento").asLong();
 
-        // 10. Veterinário conclui o Evento
         var concluirReq = new EventoController.EventoConcluirRequest("Vacina aplicada sem reações", new BigDecimal("120.00"));
         mockMvc.perform(patch("/eventos/" + idEvento + "/concluir")
                         .header("Authorization", "Bearer " + vetToken)
@@ -166,7 +157,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONCLUIDO"));
 
-        // 11. Admin lista lançamentos de pontos pendentes e encontra o lançamento de 30 pontos
         MvcResult pontosListRes = mockMvc.perform(get("/pontos")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
@@ -175,19 +165,16 @@ class EventoPontosRecompensaIntegrationTest {
         assertThat(pontosArray.size()).isGreaterThanOrEqualTo(1);
         Long idLancamento = pontosArray.get(0).get("idLancamento").asLong();
 
-        // 12. Admin libera os pontos
         mockMvc.perform(patch("/pontos/" + idLancamento + "/liberar")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("LIBERADO"));
 
-        // 13. Tutor consulta saldo: deve ter exatamente 30 pontos
         mockMvc.perform(get("/recompensas/saldo")
                         .header("Authorization", "Bearer " + tutorToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string("30"));
 
-        // 14. Tutor resgata a recompensa de 30 pontos
         MvcResult resgateRes = mockMvc.perform(patch("/recompensas/" + idRecompensa + "/resgatar")
                         .header("Authorization", "Bearer " + tutorToken))
                 .andExpect(status().isOk())
@@ -195,7 +182,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         Long idResgate = objectMapper.readTree(resgateRes.getResponse().getContentAsString()).get("idResgate").asLong();
 
-        // 15. Veterinário valida o resgate
         var validarReq = new RecompensaController.ValidarResgateRequest(true);
         mockMvc.perform(patch("/recompensas/resgates/" + idResgate + "/validar")
                         .header("Authorization", "Bearer " + vetToken)
@@ -204,7 +190,6 @@ class EventoPontosRecompensaIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("VALIDADO"));
 
-        // 16. Tutor consulta saldo final: 30 ganhos - 30 resgatados = 0
         mockMvc.perform(get("/recompensas/saldo")
                         .header("Authorization", "Bearer " + tutorToken))
                 .andExpect(status().isOk())
