@@ -21,6 +21,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PontosServiceTest {
+    @Mock
     private LancamentoPontosRepository lancamentoPontosRepository;
 
     @Mock

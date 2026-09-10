@@ -8,6 +8,10 @@ import br.com.fiap.VetSync.service.RecompensaService;
 import br.com.fiap.VetSync.service.TutorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +32,19 @@ public class RecompensaController {
     private final TutorService tutorService;
     private final VeterinarioRepository veterinarioRepository;
 
-    public record RecompensaRequest(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo) {}
+    public record RecompensaRequest(
+            @NotBlank(message = "Nome é obrigatório")
+            String nome,
+
+            String descricao,
+
+            @NotNull(message = "Custo em pontos é obrigatório")
+            @Positive(message = "Custo em pontos deve ser positivo")
+            Integer custoPontos,
+
+            @NotNull(message = "Tipo é obrigatório")
+            TipoRecompensa tipo
+    ) {}
 
     public record RecompensaResponse(
             Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa
@@ -39,7 +55,10 @@ public class RecompensaController {
             String nmRecompensa, Integer custoPontos, String nmVeterinarioValidador
     ) {}
 
-    public record ValidarResgateRequest(boolean aprovado) {}
+    public record ValidarResgateRequest(
+            @NotNull(message = "Campo 'aprovado' é obrigatório")
+            Boolean aprovado
+    ) {}
 
     private RecompensaResponse toResponse(Recompensa r) {
         return new RecompensaResponse(r.getIdRecompensa(), r.getNmRecompensa(), r.getDsDescricao(),
@@ -76,7 +95,7 @@ public class RecompensaController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('VETERINARIO')")
     @Operation(summary = "Cadastrar recompensa no catálogo. Somente VETERINARIO (equipe da clínica).")
-    public RecompensaResponse criar(@RequestBody RecompensaRequest request) {
+    public RecompensaResponse criar(@Valid @RequestBody RecompensaRequest request) {
         return toResponse(recompensaService.criar(request.nome(), request.descricao(), request.custoPontos(), request.tipo()));
     }
 
@@ -109,7 +128,7 @@ public class RecompensaController {
     @PreAuthorize("hasRole('VETERINARIO')")
     @Operation(summary = "Validar ou negar um resgate pendente. Somente VETERINARIO.")
     public ResgateResponse validar(@PathVariable Long idResgate, Authentication authentication,
-                                   @RequestBody ValidarResgateRequest request) {
+                                   @Valid @RequestBody ValidarResgateRequest request) {
         return toResponse(recompensaService.validar(idResgate, idVeterinarioAutenticado(authentication), request.aprovado()));
     }
 }
