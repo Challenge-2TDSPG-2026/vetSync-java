@@ -9,9 +9,15 @@
 
 | Nome | RM |
 |---|---|
-| Arthur Brito | RM 562085 |
-| Luiz Felipe Flosi | RM 563197 |
-| Pedro Brum | RM 561780 |
+| Arthur Brito da Silva| RM 562085 |
+| Luiz Felipe Flosi dos Santos| RM 563197 |
+| Pedro Henrique Brum Lopes | RM 561780 |
+
+---
+
+## Link do vídeo de apresentação
+
+https://youtu.be/uW6jSxBvBPk
 
 ---
 
